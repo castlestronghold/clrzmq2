@@ -2,6 +2,9 @@ clrzmq.userprefs
 
 /build
 AssemblyInfo.cs
+obj
+bin
+!/bin
 
 # Standard VS.NET and ReSharper Foo
 */obj
@@ -14,3 +17,7 @@ _ReSharper*
 *.suo
 *.cache
 * Thumbs.db
+_ReSharper.*
+*.ReSharper.user
+*.Cache
+*.cache
