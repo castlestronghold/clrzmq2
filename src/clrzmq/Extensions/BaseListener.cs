@@ -47,14 +47,25 @@
 				                    			{
 				                    				var bytes = socket.Recv();
 
-													var reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
+				                    				byte[] reply = null;
 
-													socket.Send(reply);
+				                    				try
+				                    				{
+				                    					reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
+				                    				}
+				                    				catch (System.Exception e)
+				                    				{
+				                    					Logger.Error("Error getting reply.", e);
+				                    				}
+													finally
+				                    				{
+				                    					socket.Send(reply ?? new byte[0]);
+				                    				}
 				                    			}
 				                    		}
 				                    		catch (System.Exception e)
 				                    		{
-				                    			Logger.Error("Error on " + GetType().Name + " background thread", e);
+				                    			Logger.Fatal("Error on " + GetType().Name + " background thread", e);
 				                    		}
 
 				                    	})

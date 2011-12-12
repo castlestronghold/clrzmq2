@@ -21,3 +21,4 @@ _ReSharper.*
 *.ReSharper.user
 *.Cache
 *.cache
+clrzmq.sln.DotSettings.user
