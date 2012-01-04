@@ -27,7 +27,7 @@
 				{
 					socket.Connect(config.Transport, config.Ip, config.Port);
 
-					Logger.Debug("Connecting {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
+					Logger.DebugFormat("Connecting {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
 
 					return InternalGet(socket);
 				}
@@ -68,7 +68,7 @@
 				{
 					socket.Connect(config.Transport, config.Ip, config.Port);
 
-					Logger.Debug("Connecting {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
+					Logger.DebugFormat("Connecting {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
 
 					InternalInvoke(socket);
 				}

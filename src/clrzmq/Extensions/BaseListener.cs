@@ -41,7 +41,7 @@
 
 				                    			socket.Bind(config.Transport, config.Ip, config.Port);
 
-												Logger.Info("Binding {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
+												Logger.InfoFormat("Binding {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
 
 				                    			while (true)
 				                    			{
