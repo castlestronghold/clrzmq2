@@ -11,6 +11,12 @@ bin
 */bin
 *.csproj.user
 _ReSharper*
+/build
+/packages
+/publish
+nuget.exe
+lib/**/libzmq.dll
+*.snk
 *ReSharper.*
 *.resharper.user
 *.resharper

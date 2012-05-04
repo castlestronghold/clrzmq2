@@ -38,7 +38,9 @@ namespace ZMQ {
         private static int _appSocketCount;
         private static readonly Object _lockObj = new object();
 
+#if !PocketPC
         private readonly int _processorCount;
+#endif
 
         private PollItem _pollItem;
         private bool _localSocket;
@@ -58,13 +60,17 @@ namespace ZMQ {
         internal Socket(IntPtr ptr) {
             Ptr = ptr;
             CommonInit(false);
+#if !PocketPC
             _processorCount = Environment.ProcessorCount;
+#endif
         }
 
         /// <summary>
-        /// Create Socket using application wide Context
+        /// Create Socket using application wide Context. OBSOLETE: use <see cref="Context.Socket"/> and
+        /// avoid using application-wide Context objects.
         /// </summary>
         /// <param name="type">Socket type</param>
+        [Obsolete("Sockets should be constructed using Context.Socket. Will be removed in 3.x.")]
         public Socket(SocketType type) {
             lock (_lockObj) {
                 if (_appContext == null) {
@@ -156,7 +162,7 @@ namespace ZMQ {
             }
         }
 
-#if x86
+#if x86 || PocketPC
         /// <summary>
         /// Allows cross platform reading of size_t
         /// </summary>
@@ -213,7 +219,7 @@ namespace ZMQ {
                 throw new ArgumentNullException("sysSocket");
             }
 
-#if x86 || POSIX
+#if x86 || POSIX || PocketPC
             return new PollItem(new ZMQPollItem(Ptr, sysSocket.Handle.ToInt32(), (short)events), this);
 #elif x64
             return new PollItem(new ZMQPollItem(Ptr, sysSocket.Handle.ToInt64(), (short)events), this);
@@ -355,7 +361,11 @@ namespace ZMQ {
             }
 
             _address = addr;
+#if PocketPC
+            if (C.zmq_bind(Ptr, Encoding.ASCII.GetBytes(addr)) != 0)
+#else
             if (C.zmq_bind(Ptr, addr) != 0)
+#endif
                 throw new Exception();
         }
 
@@ -371,7 +381,7 @@ namespace ZMQ {
                 throw new ArgumentNullException("addr");
             }
 
-            Bind(Enum.GetName(typeof(Transport), transport).ToLower() + "://" + addr + ":" + port);
+            Bind(GetTransportName(transport) + "://" + addr + ":" + port);
         }
 
         /// <summary>
@@ -385,7 +395,7 @@ namespace ZMQ {
                 throw new ArgumentNullException("addr");
             }
 
-            Bind(Enum.GetName(typeof(Transport), transport).ToLower() + "://" + addr);
+            Bind(GetTransportName(transport) + "://" + addr);
         }
 
         /// <summary>
@@ -399,8 +409,12 @@ namespace ZMQ {
             }
 
             _address = addr;
+#if PocketPC
+            if (C.zmq_connect(Ptr, Encoding.ASCII.GetBytes(addr)) != 0)
+#else
             if (C.zmq_connect(Ptr, addr) != 0)
-                throw new Exception();
+#endif
+            throw new Exception();
         }
 
         /// <summary>
@@ -415,7 +429,7 @@ namespace ZMQ {
                 throw new ArgumentNullException("addr");
             }
 
-            Connect(Enum.GetName(typeof(Transport), transport).ToLower() + "://" + addr + ":" + port);
+            Connect(GetTransportName(transport) + "://" + addr + ":" + port);
         }
 
         /// <summary>
@@ -429,7 +443,30 @@ namespace ZMQ {
                 throw new ArgumentNullException("addr");
             }
 
-            Connect(Enum.GetName(typeof(Transport), transport).ToLower() + "://" + addr);
+            Connect(GetTransportName(transport) + "://" + addr);
+        }
+
+        private static string GetTransportName(Transport tr)
+        {
+#if PocketPC
+            switch (tr)
+            {
+                case Transport.TCP:
+                    return "tcp";
+                case Transport.PGM:
+                    return "pgm";
+                case Transport.IPC:
+                    return "ipc";
+                case Transport.INPROC:
+                    return "inproc";
+                case Transport.EPGM:
+                    return "epgm";
+                default:
+                    throw new ArgumentException("Unexpected transport.", "tr");
+            }
+#else
+            return Enum.GetName(typeof(Transport), tr).ToLower();
+#endif
         }
 
         /// <summary>
@@ -486,7 +523,7 @@ namespace ZMQ {
                     C.zmq_msg_close(_msg);
                     break;
                 }
-                if (C.zmq_errno() == 4) {
+                if (C.zmq_errno() == (int)ERRNOS.EINTR) {
                     continue;
                 }
                 if (C.zmq_errno() != (int)ERRNOS.EAGAIN) {
@@ -531,21 +568,27 @@ namespace ZMQ {
             while (timer.ElapsedMilliseconds <= timeout) {
                 data = Recv(SendRecvOpt.NOBLOCK);
 
-                if (data == null && timeout > 1) {
-                    if (iterations < 20 && _processorCount > 1) {
-                        // If we have a short wait (< 20 iterations) we
-                        // SpinWait to allow other threads on HT CPUs
-                        // to use the CPU, the more CPUs we have
-                        // the longer it's "ok" to spin wait since
-                        // we stall the overall system less
-                        Thread.SpinWait(100 * _processorCount);
-                    }
-                    else {
-                        // Yield my remaining time slice to another thread
+                if (data == null) {
+                    if (timeout > 1) {
+#if !PocketPC
+                        if (iterations < 20 && _processorCount > 1) {
+                            // If we have a short wait (< 20 iterations) we
+                            // SpinWait to allow other threads on HT CPUs
+                            // to use the CPU, the more CPUs we have
+                            // the longer it's "ok" to spin wait since
+                            // we stall the overall system less
+                            Thread.SpinWait(100 * _processorCount);
+                        }
+                        else {
+#endif
+                            // Yield my remaining time slice to another thread
 #if NET_4
-                        Thread.Yield();
+                            Thread.Yield();
 #else
-                        Thread.Sleep(0);
+                            Thread.Sleep(1);
+#endif
+#if !PocketPC
+                        }
 #endif
                     }
                 }
@@ -580,7 +623,7 @@ namespace ZMQ {
             if (data == null) {
                 return null;
             }
-            return encoding.GetString(data);
+            return encoding.GetString(data, 0, data.Length);
         }
 
         /// <summary>
@@ -595,7 +638,7 @@ namespace ZMQ {
             if (data == null) {
                 return null;
             }
-            return encoding.GetString(data);
+            return encoding.GetString(data, 0, data.Length);
         }
 
         /// <summary>
@@ -604,11 +647,29 @@ namespace ZMQ {
         /// <returns>Queue of message parts</returns>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
         public Queue<byte[]> RecvAll() {
-            return RecvAll(SendRecvOpt.NONE);
+            return RecvAll((Queue<byte[]>)null);
         }
 
         /// <summary>
         /// Listen for message, retrieving all pending message parts
+        /// </summary>
+        /// <param name="messages">The queue object to put the message into</param>
+        /// <returns>Queue of message parts</returns>
+        /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
+        public Queue<byte[]> RecvAll(Queue<byte[]> messages) {
+            if (messages == null) {
+                messages = new Queue<byte[]>();
+            }
+
+            messages.Enqueue(Recv());
+            while (RcvMore) {
+                messages.Enqueue(Recv());
+            }
+            return messages;
+        }
+
+        /// <summary>
+        /// Listen for message, retrieving all pending message parts.
         /// </summary>
         /// <param name="flags">Receive options</param>
         /// <returns>Queue of message parts</returns>
@@ -618,7 +679,7 @@ namespace ZMQ {
         }
 
         /// <summary>
-        /// Listen for message, retrieving all pending message parts
+        /// Listen for message, retrieving all pending message parts.
         /// </summary>
         /// <param name="messages">The queue object to put the message into</param>
         /// <param name="flags">Receive options</param>
@@ -652,9 +713,7 @@ namespace ZMQ {
         }
 
         /// <summary>
-        /// Listen for message, retrieving all pending message parts. DO NOT
-        /// USE, left for backwards compatibility reasons but the sendrecvopts
-        /// are not compatible with receiving all messages.
+        /// Listen for message, retrieving all pending message parts.
         /// </summary>
         /// <param name="encoding">String Encoding</param>
         /// <param name="flags">Socket options to use when receiving</param>
@@ -675,8 +734,9 @@ namespace ZMQ {
         /// <param name="message">Message</param>
         /// <param name="length">Length of data to send from message</param>
         /// <param name="flags">Send Options</param>
-        public void Send(byte[] message, int length, params SendRecvOpt[] flags) {
-            Send(message, 0, length, flags);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus Send(byte[] message, int length, params SendRecvOpt[] flags) {
+            return Send(message, 0, length, flags);
         }
 
         /// <summary>
@@ -686,7 +746,8 @@ namespace ZMQ {
         /// <param name="startIndex">Index to start reading data from</param>
         /// <param name="length">Length of data to send from message, starting at startIndex</param>
         /// <param name="flags">Send Options</param>
-        public void Send(byte[] message, int startIndex, int length, params SendRecvOpt[] flags) {
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus Send(byte[] message, int startIndex, int length, params SendRecvOpt[] flags) {
             if (message == null) {
                 throw new ArgumentNullException("message");
             }
@@ -698,7 +759,7 @@ namespace ZMQ {
             int flagsVal = 0;
 
             foreach (SendRecvOpt opt in flags) {
-                flagsVal += (int)opt;
+                flagsVal |= (int)opt;
             }
 
             if (C.zmq_msg_init_size(_msg, length) != 0) {
@@ -707,9 +768,27 @@ namespace ZMQ {
 
             Marshal.Copy(message, startIndex, C.zmq_msg_data(_msg), length);
 
-            if (C.zmq_send(Ptr, _msg, flagsVal) != 0) {
+            int rc = C.zmq_send(Ptr, _msg, flagsVal);
+
+            if (C.zmq_msg_close(_msg) != 0) {
                 throw new Exception();
             }
+
+            if (rc >= 0) {
+                return SendStatus.Sent;
+            }
+
+            int errno = C.zmq_errno();
+
+            if (errno == (int)ERRNOS.EAGAIN) {
+                return SendStatus.TryAgain;
+            }
+
+            if (errno == (int)ERRNOS.EINTR) {
+                return SendStatus.Interrupted;
+            }
+
+            throw new Exception();
         }
 
         /// <summary>
@@ -718,12 +797,13 @@ namespace ZMQ {
         /// <param name="message">Message</param>
         /// <param name="flags">Send Options</param>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
-        public void Send(byte[] message, params SendRecvOpt[] flags) {
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus Send(byte[] message, params SendRecvOpt[] flags) {
             if (message == null) {
                 throw new ArgumentNullException("message");
             }
 
-            Send(message, 0, message.Length, flags);
+            return Send(message, 0, message.Length, flags);
         }
 
         /// <summary>
@@ -731,8 +811,9 @@ namespace ZMQ {
         /// </summary>
         /// <param name="message">Message</param>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
-        public void Send(byte[] message) {
-            Send(message, SendRecvOpt.NONE);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus Send(byte[] message) {
+            return Send(message, SendRecvOpt.NONE);
         }
 
         /// <summary>
@@ -741,22 +822,25 @@ namespace ZMQ {
         /// <param name="message">Message string</param>
         /// <param name="encoding">String encoding</param>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
-        public void Send(string message, Encoding encoding) {
-            Send(message, encoding, SendRecvOpt.NONE);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus Send(string message, Encoding encoding) {
+            return Send(message, encoding, SendRecvOpt.NONE);
         }
 
         /// <summary>
         /// Send empty message part
         /// </summary>
-        public void Send() {
-            Send(new byte[0]);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus Send() {
+            return Send(new byte[0]);
         }
 
         /// <summary>
         /// Send empty message part
         /// </summary>
-        public void SendMore() {
-            Send(new byte[0], SendRecvOpt.SNDMORE);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus SendMore() {
+            return Send(new byte[0], SendRecvOpt.SNDMORE);
         }
 
         /// <summary>
@@ -764,8 +848,9 @@ namespace ZMQ {
         /// </summary>
         /// <param name="message">Message</param>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
-        public void SendMore(byte[] message) {
-            Send(message, SendRecvOpt.SNDMORE);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus SendMore(byte[] message) {
+            return Send(message, SendRecvOpt.SNDMORE);
         }
 
         /// <summary>
@@ -774,8 +859,9 @@ namespace ZMQ {
         /// <param name="message">Message</param>
         /// <param name="encoding">String encoding</param>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
-        public void SendMore(string message, Encoding encoding) {
-            Send(message, encoding, SendRecvOpt.SNDMORE);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus SendMore(string message, Encoding encoding) {
+            return Send(message, encoding, SendRecvOpt.SNDMORE);
         }
 
         /// <summary>
@@ -785,8 +871,9 @@ namespace ZMQ {
         /// <param name="encoding">String encoding</param>
         /// <param name="flags">Send options</param>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
-        public void SendMore(string message, Encoding encoding, params SendRecvOpt[] flags) {
-            Send(message, encoding, flags);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus SendMore(string message, Encoding encoding, params SendRecvOpt[] flags) {
+            return Send(message, encoding, flags);
         }
 
         /// <summary>
@@ -796,8 +883,9 @@ namespace ZMQ {
         /// <param name="encoding">Encoding to use when sending</param>
         /// <param name="flags">Send Options</param>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
-        public void Send(string message, Encoding encoding, params SendRecvOpt[] flags) {
-            Send(encoding.GetBytes(message), flags);
+        /// <returns>A <see cref="SendStatus"/> value indicating the outcome of the Send operation.</returns>
+        public SendStatus Send(string message, Encoding encoding, params SendRecvOpt[] flags) {
+            return Send(encoding.GetBytes(message), flags);
         }
 
         /// <summary>
@@ -807,7 +895,7 @@ namespace ZMQ {
         /// <returns>Socket Identity</returns>
         /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
         public string IdentityToString(Encoding encoding) {
-            return encoding.GetString(Identity);
+            return encoding.GetString(Identity, 0, Identity.Length);
         }
 
         /// <summary>
@@ -1106,6 +1194,7 @@ namespace ZMQ {
         /// <summary>
         /// ZMQ Device creation
         /// </summary>
+        [Obsolete("zmq_device support will be removed in 3.x.")]
         public static class Device {
             /// <summary>
             /// Create ZMQ Device
@@ -1115,7 +1204,9 @@ namespace ZMQ {
             /// <param name="outSocket">Output socket</param>
             /// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
             public static void Create(DeviceType device, Socket inSocket, Socket outSocket) {
-                if (C.zmq_device((int)device, inSocket.Ptr, outSocket.Ptr) != 0)
+                int rc = C.zmq_device((int)device, inSocket.Ptr, outSocket.Ptr);
+
+                if (rc == -1 && C.zmq_errno() != (int)ERRNOS.ETERM)
                     throw new Exception();
             }
 

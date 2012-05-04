@@ -25,14 +25,16 @@ using System.Threading;
 
 namespace ZMQ.ZMQDevice {
     public abstract class Device : IDisposable {
-        private const long PollingInterval = 750000;
+        private const long PollingIntervalUsec = 750000;
 
-        protected bool _run;
+        protected volatile bool _run;
         protected Socket _frontend;
         protected Socket _backend;
 
         private readonly Thread _runningThread;
-        private bool _isRunning;        
+        private readonly ManualResetEvent _doneEvent;
+
+        private bool _isRunning;
 
         /// <summary>
         /// Create Device
@@ -47,10 +49,18 @@ namespace ZMQ.ZMQDevice {
             _runningThread = new Thread(RunningLoop);
             _frontend.PollInHandler += FrontendHandler;
             _backend.PollInHandler += BackendHandler;
+            _doneEvent = new ManualResetEvent(false);
         }
 
         ~Device() {
             Dispose(false);
+        }
+
+        public ManualResetEvent DoneEvent { get { return _doneEvent; } }
+
+        public bool IsRunning {
+            get { return _isRunning; }
+            set { _isRunning = value; }
         }
 
         public void Dispose() {
@@ -61,8 +71,9 @@ namespace ZMQ.ZMQDevice {
         protected virtual void Dispose(bool disposing) {
             if (_isRunning) {
                 Stop();
-                while (_isRunning) { Thread.Sleep((int)PollingInterval); }
+                _runningThread.Join((int)PollingIntervalUsec * 2 / 1000);
             }
+
             _frontend.Dispose();
             _backend.Dispose();
         }
@@ -74,6 +85,7 @@ namespace ZMQ.ZMQDevice {
         /// Start Device
         /// </summary>
         public virtual void Start() {
+            _doneEvent.Reset();
             _run = true;
             _runningThread.Start();
             _isRunning = true;
@@ -86,17 +98,13 @@ namespace ZMQ.ZMQDevice {
             _run = false;
         }
 
-        public bool IsRunning {
-            get { return _isRunning; }
-            set { _isRunning = value; }
-        }
-
         protected virtual void RunningLoop() {
             var skts = new List<Socket> { _frontend, _backend };
             while (_run) {
-                Context.Poller(skts, PollingInterval);
+                Context.Poller(skts, PollingIntervalUsec);
             }
             IsRunning = false;
+            _doneEvent.Set();
         }
     }
 
@@ -104,6 +112,13 @@ namespace ZMQ.ZMQDevice {
     /// Standard Queue Device
     /// </summary>
     public class Queue : Device {
+        public Queue(Context context, string frontendAddr, string backendAddr)
+            : base(context.Socket(SocketType.XREP), context.Socket(SocketType.XREQ)) {
+            _frontend.Bind(frontendAddr);
+            _backend.Connect(backendAddr);
+        }
+
+        [Obsolete("Use the constructor that accepts a Context. Will be removed in 3.x.")]
         public Queue(string frontendAddr, string backendAddr)
             : base(new Socket(SocketType.XREP), new Socket(SocketType.XREQ)) {
             _frontend.Bind(frontendAddr);
@@ -120,6 +135,13 @@ namespace ZMQ.ZMQDevice {
     }
 
     public class Forwarder : Device {
+        public Forwarder(Context context, string frontendAddr, string backendAddr, MessageProcessor msgProc)
+            : base(context.Socket(SocketType.SUB), context.Socket(SocketType.PUB)) {
+            _frontend.Bind(frontendAddr);
+            _backend.Connect(backendAddr);
+        }
+
+        [Obsolete("Use the constructor that accepts a Context. Will be removed in 3.x.")]
         public Forwarder(string frontendAddr, string backendAddr, MessageProcessor msgProc)
             : base(new Socket(SocketType.SUB), new Socket(SocketType.PUB)) {
             _frontend.Connect(frontendAddr);
@@ -136,8 +158,15 @@ namespace ZMQ.ZMQDevice {
     }
 
     public class Streamer : Device {
+        public Streamer(Context context, string frontendAddr, string backendAddr, MessageProcessor msgProc)
+            : base(context.Socket(SocketType.PULL), context.Socket(SocketType.PUSH)) {
+            _frontend.Bind(frontendAddr);
+            _backend.Connect(backendAddr);
+        }
+
+        [Obsolete("Use the constructor that accepts a Context. Will be removed in 3.x.")]
         public Streamer(string frontendAddr, string backendAddr, MessageProcessor msgProc)
-            : base(new Socket(SocketType.PUB), new Socket(SocketType.SUB)) {
+            : base(new Socket(SocketType.PULL), new Socket(SocketType.PUSH)) {
             _frontend.Bind(frontendAddr);
             _backend.Connect(backendAddr);
         }
@@ -156,6 +185,14 @@ namespace ZMQ.ZMQDevice {
     public class AsyncReturn : Device {
         private readonly MessageProcessor _messageProcessor;
 
+        public AsyncReturn(Context context, string frontendAddr, string backendAddr, MessageProcessor msgProc)
+            : base(context.Socket(SocketType.XREP), context.Socket(SocketType.PULL)) {
+            _messageProcessor = msgProc;
+            _frontend.Bind(frontendAddr);
+            _backend.Bind(backendAddr);
+        }
+
+        [Obsolete("Use the constructor that accepts a Context. Will be removed in 3.x.")]
         public AsyncReturn(string frontendAddr, string backendAddr, MessageProcessor msgProc)
             : base(new Socket(SocketType.XREP), new Socket(SocketType.PULL)) {
             _messageProcessor = msgProc;
