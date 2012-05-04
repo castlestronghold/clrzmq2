@@ -6,7 +6,7 @@ namespace ZMQ.Extensions
 
 	public class ZSocket : IDisposable
 	{
-		public const int DefaultTimeout = 100000;
+		public const int DefaultTimeout = 2000;
 
 		private readonly Socket socket;
 
@@ -39,14 +39,9 @@ namespace ZMQ.Extensions
 			socket.Send(message, encoding);
 		}
 
-		public virtual byte[] Recv()
+		public virtual void SendMore(string key)
 		{
-			return socket.Recv();
-		}
-
-		public virtual string Recv(Encoding encoding)
-		{
-			return socket.Recv(encoding);
+			socket.SendMore(key, Encoding.UTF8);
 		}
 
 		public virtual void Send(byte[] message)
@@ -54,14 +49,28 @@ namespace ZMQ.Extensions
 			socket.Send(message);
 		}
 
+		public virtual byte[] Recv(int timeout = DefaultTimeout)
+		{
+			//();
+			//System.Diagnostics.Debug.Print("Timeout: " + timeout + ". Is infinite: " + (timeout == int.MaxValue));
+
+			if (timeout == int.MaxValue) 
+				return socket.Recv();
+
+			return socket.Recv(timeout);
+		}
+
+		public virtual string Recv(Encoding encoding, int timeout = DefaultTimeout)
+		{
+			if (timeout == int.MaxValue) 
+				return socket.Recv(encoding);
+
+			return socket.Recv(encoding, timeout);
+		}
+
 		public virtual void Subscribe(string filter)
 		{
 			socket.Subscribe(filter, Encoding.UTF8);
-		}
-
-		public virtual void SendMore(string key)
-		{
-			socket.SendMore(key, Encoding.UTF8);
 		}
 	}
 }

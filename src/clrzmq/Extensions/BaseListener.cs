@@ -45,7 +45,7 @@
 
 				                    			while (true)
 				                    			{
-				                    				var bytes = socket.Recv();
+				                    				var bytes = socket.Recv(int.MaxValue);
 
 				                    				byte[] reply = null;
 

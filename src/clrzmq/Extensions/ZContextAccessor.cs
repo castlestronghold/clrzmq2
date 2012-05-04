@@ -19,13 +19,17 @@ namespace ZMQ.Extensions
 		public Func<SocketType, ZSocket> SocketFactory
 		{
 			get { return socketFactory; }
-			set { socketFactory = value; }
 		}
 
 		public void Dispose()
 		{
 			if (context.IsValueCreated)
 				context.Value.Dispose();
+		}
+
+		public static ZContextAccessor New(Func<SocketType, ZSocket> socketFactory) 
+		{
+			return new ZContextAccessor { socketFactory = socketFactory };
 		}
 	}
 }
