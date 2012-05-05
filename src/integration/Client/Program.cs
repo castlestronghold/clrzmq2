@@ -25,7 +25,17 @@ namespace Client
 			var remoteService = container.Resolve<IRemoteService>();
 
 			remoteService.Foo();
+			
 			Console.WriteLine("sum:" + remoteService.WeirdSum(1, 2));
+
+			try
+			{
+				remoteService.Error();
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e);
+			}
 
 			Console.WriteLine("Press any key to exit");
 			Console.ReadKey();

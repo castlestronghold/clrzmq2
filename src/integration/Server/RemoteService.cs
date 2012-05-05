@@ -9,6 +9,8 @@
 		int WeirdSum(int a, int b);
 
 		void Foo();
+
+		void Error();
 	}
 
 	public class RemoteServiceImpl : IRemoteService 
@@ -21,6 +23,11 @@
 		public void Foo()
 		{
 			Console.WriteLine("Foo invoked");
+		}
+
+		public void Error()
+		{
+			throw new InvalidOperationException("ouch");
 		}
 	}
 }

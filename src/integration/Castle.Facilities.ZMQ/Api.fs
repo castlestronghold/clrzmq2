@@ -82,6 +82,7 @@ open Castle.MicroKernel.Registration
             
                                 ResponseMessage(serialize_with_netbinary(result), null)
                             with
+                                | :? TargetInvocationException as ex -> ResponseMessage(null, ex.InnerException)
                                 | :? Exception as ex -> ResponseMessage(null, ex)
 
             serialize_with_netbinary(response)
@@ -121,18 +122,19 @@ open Castle.MicroKernel.Registration
         interface IInterceptor with
             
             member this.Intercept(invocation) =
-                Console.WriteLine("invoked")
+                if invocation.TargetType <> null then
+                    invocation.Proceed()
+                else
+                    let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, invocation.Arguments)
+                    let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
 
-                let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, invocation.Arguments)
-                let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
+                    let response = RemoteRequest(zContextAccessor, request, endpoint).Get()
 
-                let response = RemoteRequest(zContextAccessor, request, endpoint).Get()
+                    if response.ExceptionThrown <> null then
+                        raise response.ExceptionThrown
 
-                if response.ExceptionThrown <> null then
-                    raise response.ExceptionThrown
-
-                if invocation.Method.ReturnType <> typeof<Void> then
-                    invocation.ReturnValue <- deserialize_with_netbinary<obj>(response.ReturnValue)
+                    if invocation.Method.ReturnType <> typeof<Void> then
+                        invocation.ReturnValue <- deserialize_with_netbinary<obj>(response.ReturnValue)
 
         interface IOnBehalfAware with
 
@@ -148,7 +150,7 @@ open Castle.MicroKernel.Registration
             model.Interceptors.Add(new InterceptorReference(typeof<RemoteRequestInterceptor>))
         
         override this.ProcessModel(kernel, model) =
-            if not isServer && (model.Services |> Seq.exists (fun s -> s.IsDefined(typeof<RemoteServiceAttribute>, false))) then
+            if (model.Services |> Seq.exists (fun s -> s.IsDefined(typeof<RemoteServiceAttribute>, false))) then
                 this.add_interceptor(model)
 
     type ZeroMQFacility() =
