@@ -182,4 +182,9 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\lib\x86\libzmq.dll">
+      <Link>libzmq.dll</Link>
+    </Content>
+  </ItemGroup>
 </Project>

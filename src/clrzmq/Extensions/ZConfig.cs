@@ -4,9 +4,9 @@
 
 	public class ZConfig
 	{
-		public ZConfig(string ip, uint port, Transport? transport = Transport.TCP)
+		public ZConfig(string ip, uint port, Transport transport = Transport.TCP)
 		{
-			Transport = transport.Value;
+			Transport = transport;
 			Ip = ip;
 			Port = port;
 		}
