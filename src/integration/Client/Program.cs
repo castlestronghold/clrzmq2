@@ -22,7 +22,10 @@ namespace Client
 
 			container.Register(Component.For<IRemoteService>());
 
-			Console.WriteLine("sum:" + container.Resolve<IRemoteService>().Sum(1, 2));
+			var remoteService = container.Resolve<IRemoteService>();
+
+			remoteService.Foo();
+			Console.WriteLine("sum:" + remoteService.WeirdSum(1, 2));
 
 			Console.WriteLine("Press any key to exit");
 			Console.ReadKey();

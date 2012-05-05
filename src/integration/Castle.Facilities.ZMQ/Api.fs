@@ -55,7 +55,17 @@ open Castle.MicroKernel.Registration
          with get() = exceptionThrown
          and set(value) = exceptionThrown <- value
 
-    type RemoteRequestListener(bindAddress:String, zContextAccessor:ZContextAccessor, kernel:IKernel) =
+    type Dispatcher(kernel:IKernel) =
+        member this.Invoke(target:string, methd:string, parms: obj array) = 
+            let tgtType = Type.GetType(target)
+
+            let instance = kernel.Resolve(tgtType)
+
+            let methodBase = tgtType.GetMethod(methd, parms |> Seq.map (fun p -> p.GetType()) |> Seq.toArray)
+
+            (methodBase.ReturnType <> typeof<Void>, methodBase.Invoke(instance, parms))
+
+    type RemoteRequestListener(bindAddress:String, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
         inherit BaseListener(zContextAccessor)
 
         override this.GetConfig() = 
@@ -63,8 +73,16 @@ open Castle.MicroKernel.Registration
 
             ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
 
-        override this.GetReplyFor(request, socket) = 
-            let response = ResponseMessage(serialize_with_netbinary(3), null)
+        override this.GetReplyFor(message, socket) = 
+            let request = deserialize_with_netbinary<RequestMessage>(message);
+
+            let response = 
+                            try
+                                let nonVoid, result = dispatcher.Invoke(request.TargetService, request.TargetMethod, request.MethodParams)
+            
+                                ResponseMessage(serialize_with_netbinary(result), null)
+                            with
+                                | :? Exception as ex -> ResponseMessage(null, ex)
 
             serialize_with_netbinary(response)
 
@@ -83,7 +101,8 @@ open Castle.MicroKernel.Registration
         override this.InternalGet(socket) =
             socket.Send(serialize_with_netbinary(message))
 
-            let bytes = socket.Recv(15000)
+            let timeout = 15000
+            let bytes = socket.Recv(timeout)
 
             deserialize_with_netbinary<ResponseMessage>(bytes)
 
@@ -104,7 +123,7 @@ open Castle.MicroKernel.Registration
             member this.Intercept(invocation) =
                 Console.WriteLine("invoked")
 
-                let request = RequestMessage(invocation.Method.DeclaringType.Name, invocation.Method.Name, invocation.Arguments)
+                let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, invocation.Arguments)
                 let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
 
                 let response = RemoteRequest(zContextAccessor, request, endpoint).Get()
@@ -119,7 +138,7 @@ open Castle.MicroKernel.Registration
 
             member this.SetInterceptedComponentModel(target) = ()
 
-    type RemoteRequestInspector() =
+    type RemoteRequestInspector(isServer:bool) =
         inherit MethodMetaInspector()
 
         override this.ObtainNodeName() = "remote-interceptor"
@@ -129,7 +148,7 @@ open Castle.MicroKernel.Registration
             model.Interceptors.Add(new InterceptorReference(typeof<RemoteRequestInterceptor>))
         
         override this.ProcessModel(kernel, model) =
-            if model.Services |> Seq.exists (fun s -> s.IsDefined(typeof<RemoteServiceAttribute>, false)) then
+            if not isServer && (model.Services |> Seq.exists (fun s -> s.IsDefined(typeof<RemoteServiceAttribute>, false))) then
                 this.add_interceptor(model)
 
     type ZeroMQFacility() =
@@ -147,11 +166,14 @@ open Castle.MicroKernel.Registration
         override this.Init() =
             base.Kernel.Register(Component.For<ZContextAccessor>(),
                                  Component.For<RemoteRouter>(),
+                                 Component.For<Dispatcher>(),
                                  Component.For<RemoteRequestInterceptor>().LifeStyle.Transient) |> ignore
 
-            base.Kernel.ComponentModelBuilder.AddContributor(new RemoteRequestInspector())
+            let isServer = not (String.IsNullOrEmpty(base.FacilityConfig.Attributes.["listen"]))
 
-            if not (String.IsNullOrEmpty(base.FacilityConfig.Attributes.["listen"])) then
+            base.Kernel.ComponentModelBuilder.AddContributor(new RemoteRequestInspector(isServer))
+
+            if isServer then
                 this.setup_server()
 
             if base.FacilityConfig.Children.["endpoints"] <> null then
