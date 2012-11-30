@@ -565,6 +565,8 @@ namespace ZMQ {
             int iterations = 0;
             var timer = Stopwatch.StartNew();
 
+        	bool first = false;
+
             while (timer.ElapsedMilliseconds <= timeout) {
                 data = Recv(SendRecvOpt.NOBLOCK);
 
@@ -583,7 +585,10 @@ namespace ZMQ {
 #endif
                             // Yield my remaining time slice to another thread
 #if NET_4
-                            Thread.Yield();
+							if (iterations < 100)
+								Thread.Yield();
+							else
+								Thread.Sleep(15);						
 #else
                             Thread.Sleep(1);
 #endif

@@ -1,9 +1,11 @@
 ﻿namespace ZMQ.Extensions
 {
 	using System;
+	using System.Diagnostics;
 	using System.Threading;
 	using Castle.Core.Logging;
 	using ZMQ;
+	using Exception = System.Exception;
 
 	public abstract class BaseListener : IDisposable
 	{
@@ -43,23 +45,45 @@
 
 												Logger.InfoFormat("Binding {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
 
+				                    			var reqId = 1;
+
 				                    			while (true)
 				                    			{
-				                    				var bytes = socket.Recv(int.MaxValue);
+													reqId++;
+													var watch = Stopwatch.StartNew();
 
-				                    				byte[] reply = null;
+				                    				try 
+													{
+														if (Logger.IsDebugEnabled)
+															Logger.Debug("Listener Recv [" + reqId + "] [Start]" + watch.ElapsedMilliseconds);
 
-				                    				try
-				                    				{
-				                    					reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
+				                    					var bytes = socket.Recv(int.MaxValue);
+
+				                    					byte[] reply = null;
+
+														if (Logger.IsDebugEnabled)
+															Logger.Debug("Listener Recv [" + reqId + "] [Bytes] " + watch.ElapsedMilliseconds);
+
+				                    					try
+				                    					{
+				                    						reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
+
+															if (Logger.IsDebugEnabled)
+																Logger.Debug("Listener Recv [" + reqId + "] [Refor] " + watch.ElapsedMilliseconds);
+				                    					}
+				                    					catch (Exception e)
+				                    					{
+				                    						Logger.Error("Error getting reply.", e);
+				                    					}
+				                    					finally
+				                    					{
+				                    						socket.Send(reply ?? new byte[0]);
+				                    					}
 				                    				}
-				                    				catch (System.Exception e)
-				                    				{
-				                    					Logger.Error("Error getting reply.", e);
-				                    				}
-													finally
-				                    				{
-				                    					socket.Send(reply ?? new byte[0]);
+				                    				finally 
+													{
+														if (Logger.IsDebugEnabled)
+															Logger.Debug("Listener Recv [" + reqId + "] [Took ] " + watch.ElapsedMilliseconds);
 				                    				}
 				                    			}
 				                    		}

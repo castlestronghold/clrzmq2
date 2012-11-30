@@ -17,6 +17,7 @@ namespace ZMQ.Extensions
 		public ZSocket(SocketType type)
 		{
 			socket = new Socket(type);
+			socket.Linger = 0;
 		}
 
 		public virtual void Connect(Transport transport, string address, uint port)

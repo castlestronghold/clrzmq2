@@ -2,6 +2,7 @@
 
 open ZMQ.Extensions
 open System
+open Castle.Facilities.Startable
 open Castle.MicroKernel.Facilities
 open Castle.MicroKernel.Registration
 open Castle.Facilities.ZMQ.Internals
@@ -19,6 +20,9 @@ open Castle.Facilities.ZMQ.Internals
             router.ParseRoutes(base.FacilityConfig.Children.["endpoints"])
 
         override this.Init() =
+            if not (base.Kernel.GetFacilities() |> Seq.exists (fun f -> f.GetType() = typeof<StartableFacility>)) then
+                base.Kernel.AddFacility<StartableFacility>() |> ignore
+
             base.Kernel.Register(Component.For<ZContextAccessor>(),
                                  Component.For<RemoteRouter>(),
                                  Component.For<Dispatcher>(),

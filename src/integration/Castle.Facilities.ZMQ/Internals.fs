@@ -58,17 +58,18 @@ open Castle.Facilities.ZMQ
 
             let instance = kernel.Resolve(tgtType)
 
-            let methodBase = tgtType.GetMethod(methd, parms |> Seq.map (fun p -> p.GetType()) |> Seq.toArray)
+            let methodBase = tgtType.GetMethod(methd, parms |> Array.map (fun p -> p.GetType()))
 
             (methodBase.ReturnType <> typeof<Void>, methodBase.Invoke(instance, parms))
 
     type RemoteRequestListener(bindAddress:String, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
         inherit BaseListener(zContextAccessor)
 
-        override this.GetConfig() = 
-            let parts = bindAddress.Split(':')
+        let config = lazy
+                        let parts = bindAddress.Split(':')
+                        ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
 
-            ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
+        override this.GetConfig() = config.Force()
 
         override this.GetReplyFor(message, socket) = 
             let request = deserialize_with_netbinary<RequestMessage>(message);
@@ -92,10 +93,11 @@ open Castle.Facilities.ZMQ
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
         inherit BaseRequest<ResponseMessage>(zContextAccessor)
 
-        override this.GetConfig() = 
-            let parts = endpoint.Split(':')
+        let config = lazy
+                        let parts = endpoint.Split(':')
+                        ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
 
-            ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
+        override this.GetConfig() = config.Force()
 
         override this.InternalGet(socket) =
             socket.Send(serialize_with_netbinary(message))
@@ -116,24 +118,30 @@ open Castle.Facilities.ZMQ
             routes.[assembly.GetName().Name]
 
     type RemoteRequestInterceptor(zContextAccessor:ZContextAccessor, router:RemoteRouter) =
+        static let logger = log4net.LogManager.GetLogger(typeof<RemoteRequestInterceptor>)
 
         interface IInterceptor with
             
             member this.Intercept(invocation) =
-                if invocation.TargetType <> null then
-                    invocation.Proceed()
-                else
-                    let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, invocation.Arguments)
-                    let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
+                let stopwatch = System.Diagnostics.Stopwatch.StartNew()
 
-                    let response = RemoteRequest(zContextAccessor, request, endpoint).Get()
+                try
+                    if invocation.TargetType <> null then
+                        invocation.Proceed()
+                    else
+                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, invocation.Arguments)
+                        let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
 
-                    if response.ExceptionThrown <> null then
-                        raise response.ExceptionThrown
+                        let response = RemoteRequest(zContextAccessor, request, endpoint).Get()
 
-                    if invocation.Method.ReturnType <> typeof<Void> then
-                        invocation.ReturnValue <- deserialize_with_netbinary<obj>(response.ReturnValue)
+                        if response.ExceptionThrown <> null then
+                            raise response.ExceptionThrown
 
+                        if invocation.Method.ReturnType <> typeof<Void> then
+                            invocation.ReturnValue <- deserialize_with_netbinary<obj>(response.ReturnValue)
+                finally
+                    logger.Debug("Intercept took " + (stopwatch.ElapsedMilliseconds.ToString()))
+                    
         interface IOnBehalfAware with
 
             member this.SetInterceptedComponentModel(target) = ()

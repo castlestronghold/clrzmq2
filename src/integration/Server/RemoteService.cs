@@ -1,6 +1,7 @@
 ﻿namespace Server 
 {
 	using System;
+	using System.Threading;
 	using Castle.Facilities.ZMQ;
 
 	[RemoteService]
@@ -23,6 +24,8 @@
 		public void Foo()
 		{
 			Console.WriteLine("Foo invoked");
+
+			Thread.Sleep(200);
 		}
 
 		public void Error()

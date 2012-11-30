@@ -1,5 +1,6 @@
 ﻿namespace ZMQ.Extensions
 {
+	using System;
 	using System.Threading.Tasks;
 	using Castle.Core.Logging;
 	using ZMQ;
@@ -37,6 +38,12 @@
 				Logger.Error("Error invoking " + GetType().Name, e);
 
 				throw;
+			}
+			catch
+			{
+				Logger.Fatal("Possible SEH Exception");
+
+				throw new InvalidOperationException("Possible SEH Exception");
 			}
 		}
 	}
@@ -76,6 +83,10 @@
 			catch (System.Exception e)
 			{
 				Logger.Error("Error invoking " + GetType().Name, e);
+			}
+			catch
+			{
+				Logger.Fatal("Possible SEH");
 			}
 		}
 
