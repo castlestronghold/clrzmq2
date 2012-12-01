@@ -6,6 +6,7 @@ using System.Text;
 namespace Client
 {
 	using System;
+	using System.Diagnostics;
 	using System.Threading;
 	using Castle.Facilities.ZMQ;
 	using Castle.MicroKernel.Registration;
@@ -36,9 +37,16 @@ namespace Client
 			Console.WriteLine("Press any to start");
 			Console.ReadKey();
 
+			var watch = Stopwatch.StartNew();
+
 			wait.Set();
 
-			Console.WriteLine("Press any key to exit");
+			for (var i = 0; i < t.Length; i++)
+			{
+				t[i].Join();
+			}
+
+			Console.WriteLine("Took: " + watch.ElapsedMilliseconds +  ". Press any key to exit");
 			Console.ReadKey();
 		}
 
@@ -48,15 +56,23 @@ namespace Client
 			{
 				wait.Wait();
 
-				while (true)
+				Console.WriteLine("Iterating");
+
+				for (var i = 0; i < 30; i++)
 				{
 					try
 					{
 						var remoteService = container.Resolve<IRemoteService>();
 
+						Console.WriteLine("Foo...");
+
 						remoteService.Foo();
 
 						Console.WriteLine("sum:" + remoteService.WeirdSum(1, 2));
+
+						var g = Guid.NewGuid();
+
+						Debug.Assert(g == remoteService.Pair(g)); 
 
 						try
 						{
@@ -69,9 +85,9 @@ namespace Client
 
 						Thread.Sleep(1000);
 					}
-					catch(System.Runtime.InteropServices.SEHException e)
+					catch (System.Runtime.InteropServices.SEHException e)
 					{
-						Console.WriteLine(e);	
+						Console.WriteLine(e);
 					}
 					catch (Exception e)
 					{

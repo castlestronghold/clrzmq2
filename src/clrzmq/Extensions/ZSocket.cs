@@ -18,11 +18,17 @@ namespace ZMQ.Extensions
 		{
 			socket = new Socket(type);
 			socket.Linger = 0;
+			socket.Identity = Guid.NewGuid().ToByteArray();
 		}
 
 		public virtual void Connect(Transport transport, string address, uint port)
 		{
 			socket.Connect(transport, address, port);
+		}
+
+		public virtual void Connect(string uri)
+		{
+			socket.Connect(uri);
 		}
 
 		public virtual void Bind(Transport transport, string address, uint port)

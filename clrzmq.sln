@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{1C71420E-3277-4855-A266-E50593D8164D}"
 	ProjectSection(SolutionItems) = preProject
 		AUTHORS = AUTHORS
@@ -22,6 +22,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{30C08BF9-B59
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{FED23C0F-5417-4B04-BCF3-B18DDDCF15E9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{FD546D7B-B1CF-43AF-81B1-A96AF545FDD7}"
+	ProjectSection(SolutionItems) = preProject
+		build.proj = build.proj
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "facility", "facility", "{675C6614-E0C3-405D-AB3D-3D2ACAF7E506}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "local_lat", "perf\local_lat\local_lat.csproj", "{E30D3D43-99B4-48ED-B060-56D88C77CCD0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "local_thr", "perf\local_thr\local_thr.csproj", "{CB79FF77-F94F-4E4B-A860-7BF941EAA2B6}"
@@ -40,14 +47,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkerPool", "tests\WorkerP
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AcceptanceTests", "tests\AcceptanceTests\AcceptanceTests.csproj", "{7B12A63E-EC15-4F13-A91C-C03C7E97D8B6}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{FD546D7B-B1CF-43AF-81B1-A96AF545FDD7}"
-	ProjectSection(SolutionItems) = preProject
-		build.proj = build.proj
-	EndProjectSection
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Castle.Facilities.ZMQ", "src\integration\Castle.Facilities.ZMQ\Castle.Facilities.ZMQ.fsproj", "{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "facility", "facility", "{675C6614-E0C3-405D-AB3D-3D2ACAF7E506}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\integration\Client\Client.csproj", "{006DB626-E002-4EFA-835C-B9863081C3A1}"
 EndProject
@@ -484,6 +484,7 @@ Global
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_RELEASE|x64.ActiveCfg = Release|Any CPU
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_RELEASE|x64.Build.0 = Release|Any CPU
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_RELEASE|x86.ActiveCfg = Release|Any CPU
+		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_RELEASE|x86.Build.0 = Release|Any CPU
 		{006DB626-E002-4EFA-835C-B9863081C3A1}.Debug|Any CPU.ActiveCfg = Debug|x86
 		{006DB626-E002-4EFA-835C-B9863081C3A1}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
 		{006DB626-E002-4EFA-835C-B9863081C3A1}.Debug|Mixed Platforms.Build.0 = Debug|x86
@@ -518,8 +519,8 @@ Global
 		{006DB626-E002-4EFA-835C-B9863081C3A1}.WIN_RELEASE|Mixed Platforms.ActiveCfg = Release|x86
 		{006DB626-E002-4EFA-835C-B9863081C3A1}.WIN_RELEASE|Mixed Platforms.Build.0 = Release|x86
 		{006DB626-E002-4EFA-835C-B9863081C3A1}.WIN_RELEASE|x64.ActiveCfg = Release|x86
-		{006DB626-E002-4EFA-835C-B9863081C3A1}.WIN_RELEASE|x86.ActiveCfg = Release|x86
-		{006DB626-E002-4EFA-835C-B9863081C3A1}.WIN_RELEASE|x86.Build.0 = Release|x86
+		{006DB626-E002-4EFA-835C-B9863081C3A1}.WIN_RELEASE|x86.ActiveCfg = Debug|x86
+		{006DB626-E002-4EFA-835C-B9863081C3A1}.WIN_RELEASE|x86.Build.0 = Debug|x86
 		{099D078F-9610-4F0D-89FF-D506D1654DA5}.Debug|Any CPU.ActiveCfg = Debug|x86
 		{099D078F-9610-4F0D-89FF-D506D1654DA5}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
 		{099D078F-9610-4F0D-89FF-D506D1654DA5}.Debug|Mixed Platforms.Build.0 = Debug|x86

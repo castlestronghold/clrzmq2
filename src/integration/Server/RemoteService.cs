@@ -12,6 +12,8 @@
 		void Foo();
 
 		void Error();
+
+		Guid Pair(Guid g);
 	}
 
 	public class RemoteServiceImpl : IRemoteService 
@@ -26,6 +28,11 @@
 			Console.WriteLine("Foo invoked");
 
 			Thread.Sleep(200);
+		}
+
+		public Guid Pair(Guid g)
+		{
+			return g;
 		}
 
 		public void Error()

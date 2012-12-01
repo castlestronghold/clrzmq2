@@ -17,6 +17,16 @@
 
 		public string Ip { get; set; }
 
-		public uint Port { get; set; } 
+		public uint Port { get; set; }
+
+		public string Local
+		{
+			get { return "inproc://workers_" + Port; }
+		}
+
+		public override string ToString()
+		{
+			return string.Format("{0}://{1}:{2}", Transport, Ip, Port).ToLower();
+		}
 	}
 }

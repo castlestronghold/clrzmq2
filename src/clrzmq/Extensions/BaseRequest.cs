@@ -84,10 +84,6 @@
 			{
 				Logger.Error("Error invoking " + GetType().Name, e);
 			}
-			catch
-			{
-				Logger.Fatal("Possible SEH");
-			}
 		}
 
 		public void Async()

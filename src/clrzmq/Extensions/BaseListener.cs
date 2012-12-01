@@ -27,72 +27,13 @@
 
 		protected abstract byte[] GetReplyFor(byte[] request, ZSocket socket);
 
-		public void Start()
+		public virtual void Start()
 		{
 			Logger.Debug("Starting " + GetType().Name);
 
 			try
 			{
-				thread = new Thread(() =>
-				                    	{
-				                    		try
-				                    		{
-												var config = GetConfig();
-
-				                    			var socket = ContextAccessor.SocketFactory(SocketType.REP);
-
-				                    			socket.Bind(config.Transport, config.Ip, config.Port);
-
-												Logger.InfoFormat("Binding {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
-
-				                    			var reqId = 1;
-
-				                    			while (true)
-				                    			{
-													reqId++;
-													var watch = Stopwatch.StartNew();
-
-				                    				try 
-													{
-														if (Logger.IsDebugEnabled)
-															Logger.Debug("Listener Recv [" + reqId + "] [Start]" + watch.ElapsedMilliseconds);
-
-				                    					var bytes = socket.Recv(int.MaxValue);
-
-				                    					byte[] reply = null;
-
-														if (Logger.IsDebugEnabled)
-															Logger.Debug("Listener Recv [" + reqId + "] [Bytes] " + watch.ElapsedMilliseconds);
-
-				                    					try
-				                    					{
-				                    						reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
-
-															if (Logger.IsDebugEnabled)
-																Logger.Debug("Listener Recv [" + reqId + "] [Refor] " + watch.ElapsedMilliseconds);
-				                    					}
-				                    					catch (Exception e)
-				                    					{
-				                    						Logger.Error("Error getting reply.", e);
-				                    					}
-				                    					finally
-				                    					{
-				                    						socket.Send(reply ?? new byte[0]);
-				                    					}
-				                    				}
-				                    				finally 
-													{
-														if (Logger.IsDebugEnabled)
-															Logger.Debug("Listener Recv [" + reqId + "] [Took ] " + watch.ElapsedMilliseconds);
-				                    				}
-				                    			}
-				                    		}
-				                    		catch (System.Exception e)
-				                    		{
-				                    			Logger.Fatal("Error on " + GetType().Name + " background thread", e);
-				                    		}
-
-				                    	})
+				thread = new Thread(Worker)
 				         	{
 				         		IsBackground = true,
 				         		Name = "Worker thread for " + GetType().Name
@@ -103,6 +44,63 @@
 			catch (System.Exception e)
 			{
 				Logger.Error("Error starting " + GetType().Name, e);
+			}
+		}
+
+		private void Worker()
+		{
+			try
+			{
+				var config = GetConfig();
+
+				using (var socket = ContextAccessor.SocketFactory(SocketType.REP))
+				{
+					socket.Bind(config.Transport, config.Ip, config.Port);
+
+					Logger.InfoFormat("Binding {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
+
+					AcceptAndHandleMessage(socket);
+				}
+			}
+			catch (System.Exception e)
+			{
+				Logger.Fatal("Error on " + GetType().Name + " background thread", e);
+			}
+		}
+
+		protected void AcceptAndHandleMessage(ZSocket socket)
+		{
+			while (true)
+			{
+				var watch = new Stopwatch();
+
+				if (Logger.IsDebugEnabled)
+					watch.Start();
+
+				try
+				{
+					var bytes = socket.Recv(int.MaxValue);
+
+					byte[] reply = null;
+
+					try
+					{
+						reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
+					}
+					catch (Exception e)
+					{
+						Logger.Error("Error getting reply.", e);
+					}
+					finally
+					{
+						socket.Send(reply ?? new byte[0]);
+					}
+				}
+				finally
+				{
+					if (Logger.IsDebugEnabled)
+						Logger.Debug("Listener Recv Took" + watch.ElapsedMilliseconds);
+				}
 			}
 		}
 

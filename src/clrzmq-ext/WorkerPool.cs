@@ -29,13 +29,13 @@ namespace ZMQ.ZMQDevice {
         public WorkerPool(string inSktAddr, string outSktAddr, ThreadStart worker, short workerCount)
             : base(inSktAddr, outSktAddr) {
             Start();
-            CreateWorkerThreads(worker, workerCount);
+            CreateWorkerThreads(worker, workerCount, inSktAddr);
         }
 
-        private void CreateWorkerThreads(ThreadStart worker, short workerCount) {
+        private void CreateWorkerThreads(ThreadStart worker, short workerCount, string name) {
             workerThreads = new Thread[workerCount];
             for (short count = 0; count < workerCount; count++) {
-                workerThreads[count] = new Thread(worker);
+                workerThreads[count] = new Thread(worker) {Name =  string.Format("Worker [{0}] for [{1}]", count, name), IsBackground = true};
                 workerThreads[count].Start();
             }
         }

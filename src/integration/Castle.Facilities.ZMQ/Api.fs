@@ -11,7 +11,14 @@ open Castle.Facilities.ZMQ.Internals
         inherit AbstractFacility()
 
         member this.setup_server() =
-            let listener = Component.For<RemoteRequestListener>().Parameters(Parameter.ForKey("bindAddress").Eq(base.FacilityConfig.Attributes.["listen"]))
+            let workers = if base.FacilityConfig.Attributes.["workers"] = null then 3 else Convert.ToInt32(base.FacilityConfig.Attributes.["workers"])
+
+            let listener = Component
+                            .For<RemoteRequestListener>()
+                            .Parameters(
+                                Parameter.ForKey("bindAddress").Eq(base.FacilityConfig.Attributes.["listen"]),
+                                Parameter.ForKey("workers").Eq(workers.ToString()))
+
             base.Kernel.Register(listener) |> ignore
 
         member this.setup_client() =

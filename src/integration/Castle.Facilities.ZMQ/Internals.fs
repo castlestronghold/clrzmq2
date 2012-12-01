@@ -2,10 +2,12 @@
 
 open ZMQ
 open ZMQ.Extensions
+open ZMQ.ZMQDevice
 open System
 open System.IO
 open System.Reflection
 open System.Collections.Generic
+open System.Threading
 open Castle.Core
 open Castle.Core.Configuration
 open Castle.Core.Interceptor
@@ -62,12 +64,21 @@ open Castle.Facilities.ZMQ
 
             (methodBase.ReturnType <> typeof<Void>, methodBase.Invoke(instance, parms))
 
-    type RemoteRequestListener(bindAddress:String, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
+    type RemoteRequestListener(bindAddress:String, workers:Int16, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
         inherit BaseListener(zContextAccessor)
+
+        let mutable pool:WorkerPool = null
 
         let config = lazy
                         let parts = bindAddress.Split(':')
                         ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
+
+        member this.thread_worker (state:obj) = 
+            use socket = zContextAccessor.SocketFactory.Invoke(SocketType.REP)
+
+            socket.Connect(config.Force().Local)
+
+            base.AcceptAndHandleMessage(socket)
 
         override this.GetConfig() = config.Force()
 
@@ -87,7 +98,15 @@ open Castle.Facilities.ZMQ
             serialize_with_netbinary(response)
 
         interface IStartable with
-            member this.Start() = base.Start()
+            override this.Start() = 
+                base.Logger.Debug("Starting " + this.GetType().Name)
+
+                let c = config.Force()
+
+                pool <- new WorkerPool(c.ToString(), c.Local, new ThreadStart(this.thread_worker), workers)
+
+                base.Logger.InfoFormat("Binding {0} on {1}:{2} with {3} workers", this.GetType().Name, c.Ip, c.Port, workers)
+
             member this.Stop() = base.Stop()
 
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
@@ -102,7 +121,7 @@ open Castle.Facilities.ZMQ
         override this.InternalGet(socket) =
             socket.Send(serialize_with_netbinary(message))
 
-            let timeout = 15000
+            let timeout = 7500
             let bytes = socket.Recv(timeout)
 
             deserialize_with_netbinary<ResponseMessage>(bytes)
@@ -123,7 +142,10 @@ open Castle.Facilities.ZMQ
         interface IInterceptor with
             
             member this.Intercept(invocation) =
-                let stopwatch = System.Diagnostics.Stopwatch.StartNew()
+                let stopwatch = new System.Diagnostics.Stopwatch()
+                
+                if logger.IsDebugEnabled then
+                    stopwatch.Start()
 
                 try
                     if invocation.TargetType <> null then
@@ -140,7 +162,8 @@ open Castle.Facilities.ZMQ
                         if invocation.Method.ReturnType <> typeof<Void> then
                             invocation.ReturnValue <- deserialize_with_netbinary<obj>(response.ReturnValue)
                 finally
-                    logger.Debug("Intercept took " + (stopwatch.ElapsedMilliseconds.ToString()))
+                    if logger.IsDebugEnabled then
+                        logger.Debug("Intercept took " + (stopwatch.ElapsedMilliseconds.ToString()))
                     
         interface IOnBehalfAware with
 
