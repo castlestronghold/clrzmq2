@@ -107,7 +107,11 @@ open Castle.Facilities.ZMQ
 
                 base.Logger.InfoFormat("Binding {0} on {1}:{2} with {3} workers", this.GetType().Name, c.Ip, c.Port, workers)
 
-            member this.Stop() = base.Stop()
+            override this.Stop() = 
+                if pool <> null then
+                    pool.Dispose()
+
+                base.Stop()
 
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
         inherit BaseRequest<ResponseMessage>(zContextAccessor)
