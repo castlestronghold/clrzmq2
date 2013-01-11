@@ -1,7 +1,6 @@
 ﻿namespace Server
 {
 	using System;
-	using Castle.Facilities.ZMQ;
 	using Castle.MicroKernel.Registration;
 	using Castle.Windsor;
 	using Castle.Windsor.Configuration.Interpreters;
@@ -16,7 +15,9 @@
 			//container.Resolve<RemoteRequestListener>();
 
 			Console.WriteLine("Press any key to exit");
-			Console.ReadKey();
+			Console.ReadLine();
+
+			container.Dispose();
 		}
 	}
 }

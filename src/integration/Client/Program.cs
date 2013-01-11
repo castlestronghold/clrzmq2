@@ -26,11 +26,11 @@ namespace Client
 
 			container.Register(Component.For<IRemoteService>());
 
-			var t = new Thread[10];
+			var t = new Thread[150];
 
 			for (var i = 0; i < t.Length; i++)
 			{
-				t[i] = GetThread(container);
+				t[i] = GetThread(container, i);
 				t[i].Start();
 			}
 
@@ -50,7 +50,7 @@ namespace Client
 			Console.ReadKey();
 		}
 
-		private static Thread GetThread(WindsorContainer container)
+		private static Thread GetThread(WindsorContainer container, int i1)
 		{
 			return new Thread(() =>
 			{
@@ -58,10 +58,12 @@ namespace Client
 
 				Console.WriteLine("Iterating");
 
-				for (var i = 0; i < 30; i++)
+				for (var i = 0; i < 300; i++)
 				{
 					try
 					{
+						Console.WriteLine("============== " + Thread.CurrentThread.Name);
+
 						var remoteService = container.Resolve<IRemoteService>();
 
 						Console.WriteLine("Foo...");
@@ -80,13 +82,15 @@ namespace Client
 						}
 						catch (Exception e)
 						{
-							Console.WriteLine(e);
+							//Console.WriteLine(e);
 						}
 
 						Thread.Sleep(1000);
 					}
 					catch (System.Runtime.InteropServices.SEHException e)
 					{
+						Console.WriteLine("==================== SEHException =======================");
+						Console.WriteLine(e.ErrorCode);
 						Console.WriteLine(e);
 					}
 					catch (Exception e)
@@ -94,7 +98,7 @@ namespace Client
 						Console.WriteLine(e);
 					}
 				}
-			});
+			}){Name = "t: " + i1};
 		}
 	}
 }
