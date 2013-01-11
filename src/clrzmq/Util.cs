@@ -29,7 +29,8 @@ namespace ZMQ {
     /// <summary>
     /// ZMQ Exception type
     /// </summary>
-    public class Exception : System.Exception {
+    [Serializable]
+	public class Exception : System.Exception {
         private readonly int _errno;
 
         /// <summary>
