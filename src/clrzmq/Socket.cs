@@ -429,10 +429,15 @@ namespace ZMQ {
                 throw new ArgumentNullException("addr");
             }
 
-            Connect(GetTransportName(transport) + "://" + addr + ":" + port);
+            Connect(BuildUri(transport, addr, port));
         }
 
-        /// <summary>
+	    public static string BuildUri(Transport transport, string addr, uint port)
+	    {
+		    return GetTransportName(transport) + "://" + addr + ":" + port;
+	    }
+
+	    /// <summary>
         /// Connect socket to destination address
         /// </summary>
         /// <param name="transport">Socket transport type</param>
