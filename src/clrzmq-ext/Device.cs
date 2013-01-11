@@ -46,7 +46,7 @@ namespace ZMQ.ZMQDevice {
             _frontend = frontend;
             _isRunning = false;
             _run = false;
-            _runningThread = new Thread(RunningLoop);
+	        _runningThread = new Thread(RunningLoop) { IsBackground = true };
             _frontend.PollInHandler += FrontendHandler;
             _backend.PollInHandler += BackendHandler;
             _doneEvent = new ManualResetEvent(false);
@@ -71,7 +71,7 @@ namespace ZMQ.ZMQDevice {
         protected virtual void Dispose(bool disposing) {
             if (_isRunning) {
                 Stop();
-                _runningThread.Join((int)PollingIntervalUsec * 2 / 1000);
+	            _runningThread.Join((int)PollingIntervalUsec * 2 / 1000);
             }
 
             _frontend.Dispose();
