@@ -99,7 +99,7 @@
 				finally
 				{
 					if (Logger.IsDebugEnabled)
-						Logger.Debug("Listener Recv Took" + watch.ElapsedMilliseconds);
+						Logger.Debug("Listener Recv Took: " + watch.ElapsedMilliseconds);
 				}
 			}
 		}
