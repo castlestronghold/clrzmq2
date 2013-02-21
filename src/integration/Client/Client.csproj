@@ -73,7 +73,7 @@
       <Name>clrzmq</Name>
     </ProjectReference>
     <ProjectReference Include="..\Castle.Facilities.ZMQ\Castle.Facilities.ZMQ.fsproj">
-      <Project>{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}</Project>
+      <Project>{96b09fdf-5173-417e-bf01-9ecc5f96fdce}</Project>
       <Name>Castle.Facilities.ZMQ</Name>
     </ProjectReference>
     <ProjectReference Include="..\Server\Server.csproj">
