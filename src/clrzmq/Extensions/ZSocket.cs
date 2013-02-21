@@ -46,7 +46,8 @@ namespace ZMQ.Extensions
 
 		public virtual void Dispose()
 		{
-			_elasticPoll.Return(socket, Type);
+			if (socket != null)
+				_elasticPoll.Return(socket, Type);
 		}
 
 		public virtual void Send(string message, Encoding encoding)
@@ -165,7 +166,7 @@ namespace ZMQ.Extensions
 
 			ConcurrentQueue<Socket> q;
 
-			if (queues.TryGetValue(socket.Address, out q))
+			if (queues != null && queues.TryGetValue(socket.Address, out q))
 				q.Enqueue(socket);
 			else
 				socket.Dispose();
