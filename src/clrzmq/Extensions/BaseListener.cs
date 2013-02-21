@@ -70,37 +70,44 @@
 
 		protected void AcceptAndHandleMessage(ZSocket socket)
 		{
-			while (true)
+			try
 			{
-				var watch = new Stopwatch();
-
-				if (Logger.IsDebugEnabled)
-					watch.Start();
-
-				try
+				while (true)
 				{
-					var bytes = socket.Recv(int.MaxValue);
+					var watch = new Stopwatch();
 
-					byte[] reply = null;
+					if (Logger.IsDebugEnabled)
+						watch.Start();
 
 					try
 					{
-						reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
-					}
-					catch (Exception e)
-					{
-						Logger.Error("Error getting reply.", e);
+						var bytes = socket.Recv(int.MaxValue);
+
+						byte[] reply = null;
+
+						try
+						{
+							reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
+						}
+						catch (Exception e)
+						{
+							Logger.Error("Error getting reply.", e);
+						}
+						finally
+						{
+							socket.Send(reply ?? new byte[0]);
+						}
 					}
 					finally
 					{
-						socket.Send(reply ?? new byte[0]);
+						if (Logger.IsDebugEnabled)
+							Logger.Debug("Listener Recv Took: " + watch.ElapsedMilliseconds);
 					}
 				}
-				finally
-				{
-					if (Logger.IsDebugEnabled)
-						Logger.Debug("Listener Recv Took: " + watch.ElapsedMilliseconds);
-				}
+			}
+			catch (Exception e)
+			{
+				Logger.Fatal("Error on working thread", e);
 			}
 		}
 
