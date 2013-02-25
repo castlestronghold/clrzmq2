@@ -25,6 +25,8 @@ using System.Threading;
 
 namespace ZMQ.ZMQDevice {
     public abstract class Device : IDisposable {
+	    private static readonly log4net.ILog logger = log4net.LogManager.GetLogger(typeof(Device));
+
         private const long PollingIntervalUsec = 750000;
 
         protected volatile bool _run;
@@ -99,12 +101,22 @@ namespace ZMQ.ZMQDevice {
         }
 
         protected virtual void RunningLoop() {
-            var skts = new List<Socket> { _frontend, _backend };
-            while (_run) {
-                Context.Poller(skts, PollingIntervalUsec);
-            }
-            IsRunning = false;
-            _doneEvent.Set();
+	        try
+	        {
+		        var skts = new List<Socket> { _frontend, _backend };
+		        while (_run) {
+			        var poller = Context.Poller(skts, PollingIntervalUsec);
+
+					if (logger.IsDebugEnabled)
+						logger.Debug("RunningLoop Context Polling Result: " + poller);
+		        }
+		        IsRunning = false;
+		        _doneEvent.Set();
+	        }
+	        catch (Exception e)
+	        {
+				logger.Fatal("Error on RunningLoop", e);
+	        }
         }
     }
 

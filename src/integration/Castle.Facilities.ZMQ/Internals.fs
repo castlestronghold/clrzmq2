@@ -74,11 +74,14 @@ open Castle.Facilities.ZMQ
                         ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
 
         member this.thread_worker (state:obj) = 
-            use socket = zContextAccessor.SocketFactory.Invoke(SocketType.REP)
+            try
+                use socket = zContextAccessor.SocketFactory.Invoke(SocketType.REP)
 
-            socket.Connect(config.Force().Local)
+                socket.Connect(config.Force().Local)
 
-            base.AcceptAndHandleMessage(socket)
+                base.AcceptAndHandleMessage(socket)
+            with
+                | :? Exception as ex -> base.Logger.Fatal("Error creating worker thread", ex)
 
         override this.GetConfig() = config.Force()
 
