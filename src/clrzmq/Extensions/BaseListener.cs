@@ -12,6 +12,8 @@
 		private Thread thread;
 		private bool disposed;
 
+		private ZSocket socket;
+
 		protected BaseListener(ZContextAccessor zContextAccessor)
 		{
 			ContextAccessor = zContextAccessor;
@@ -53,26 +55,29 @@
 			{
 				var config = GetConfig();
 
-				using (var socket = ContextAccessor.SocketFactory(SocketType.REP))
-				{
-					socket.Bind(config.Transport, config.Ip, config.Port);
+				socket = ContextAccessor.SocketFactory(SocketType.REP);
 
-					Logger.InfoFormat("Binding {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
+				socket.Bind(config.Transport, config.Ip, config.Port);
 
-					AcceptAndHandleMessage(socket);
-				}
+				Logger.InfoFormat("Binding {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
+
+				AcceptAndHandleMessage(socket);
 			}
 			catch (System.Exception e)
 			{
 				Logger.Fatal("Error on " + GetType().Name + " background thread", e);
 			}
+			finally
+			{
+				CloseSocket();
+			}
 		}
 
-		protected void AcceptAndHandleMessage(ZSocket socket)
+		protected void AcceptAndHandleMessage(ZSocket zSocket)
 		{
 			try
 			{
-				while (true)
+				while (!disposed)
 				{
 					var watch = new Stopwatch();
 
@@ -81,13 +86,13 @@
 
 					try
 					{
-						var bytes = socket.Recv(int.MaxValue);
+						var bytes = zSocket.Recv(int.MaxValue);
 
 						byte[] reply = null;
 
 						try
 						{
-							reply = bytes == null ? new byte[0] : GetReplyFor(bytes, socket);
+							reply = bytes == null ? new byte[0] : GetReplyFor(bytes, zSocket);
 						}
 						catch (Exception e)
 						{
@@ -95,7 +100,7 @@
 						}
 						finally
 						{
-							socket.Send(reply ?? new byte[0]);
+							zSocket.Send(reply ?? new byte[0]);
 						}
 					}
 					finally
@@ -116,11 +121,28 @@
 			Dispose();
 		}
 
+		private void CloseSocket()
+		{
+			try
+			{
+				if (socket == null) return;
+
+				socket.Dispose();
+				socket = null;
+			}
+			catch (Exception e)
+			{
+				Logger.Warn("Error closing socket.", e);
+			}
+		}
+
 		public void Dispose()
 		{
 			if (disposed) return;
 
 			disposed = true;
+
+			CloseSocket();
 
 			Logger.Info("Disposing " + GetType().Name);
 

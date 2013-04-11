@@ -71,13 +71,19 @@ namespace ZMQ.ZMQDevice {
         }
 
         protected virtual void Dispose(bool disposing) {
+			logger.Debug("Disposing Device...");
+
             if (_isRunning) {
                 Stop();
 	            _runningThread.Join((int)PollingIntervalUsec * 2 / 1000);
+
+				logger.Debug("Running thread joined...");
             }
 
             _frontend.Dispose();
             _backend.Dispose();
+
+			logger.Debug("Deviced disposed.");
         }
 
         protected abstract void FrontendHandler(Socket socket, IOMultiPlex revents);
@@ -103,13 +109,15 @@ namespace ZMQ.ZMQDevice {
         protected virtual void RunningLoop() {
 	        try
 	        {
-		        var skts = new List<Socket> { _frontend, _backend };
+		        var skts = new[] { _frontend, _backend };
+
 		        while (_run) {
 			        var poller = Context.Poller(skts, PollingIntervalUsec);
 
 					if (logger.IsDebugEnabled)
 						logger.Debug("RunningLoop Context Polling Result: " + poller);
 		        }
+
 		        IsRunning = false;
 		        _doneEvent.Set();
 	        }

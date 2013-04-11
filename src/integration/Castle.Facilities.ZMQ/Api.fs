@@ -44,3 +44,5 @@ open Castle.Facilities.ZMQ.Internals
 
             if base.FacilityConfig.Children.["endpoints"] <> null then
                 this.setup_client()
+
+            base.Kernel.Register(Component.For<Reaper>()).Resolve<Reaper>() |> ignore

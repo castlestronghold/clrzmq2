@@ -16,10 +16,13 @@ namespace Client
 
 	class Program
 	{
+
 		static ManualResetEventSlim wait = new ManualResetEventSlim(false);
 
 		static void Main(string[] args)
 		{
+			
+
 			var container = new WindsorContainer(new XmlInterpreter());
 
 			//container.Resolve<RemoteRequestListener>();
@@ -58,7 +61,7 @@ namespace Client
 
 				Console.WriteLine("Iterating");
 
-				for (var i = 0; i < 300; i++)
+				for (var i = 0; i < 5000; i++)
 				{
 					try
 					{
@@ -76,16 +79,16 @@ namespace Client
 
 						Debug.Assert(g == remoteService.Pair(g)); 
 
-						try
-						{
-							remoteService.Error();
-						}
-						catch (Exception e)
-						{
-							//Console.WriteLine(e);
-						}
+						//try
+						//{
+						//	remoteService.Error();
+						//}
+						//catch (Exception e)
+						//{
+						//	//Console.WriteLine(e);
+						//}
 
-						Thread.Sleep(1000);
+						Thread.Sleep(100);
 					}
 					catch (System.Runtime.InteropServices.SEHException e)
 					{

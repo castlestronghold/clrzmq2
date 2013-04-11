@@ -5,11 +5,10 @@ namespace ZMQ.Extensions
 	using System.Collections.Generic;
 	using System.Text;
 	using ZMQ;
-	using Exception = System.Exception;
 
 	public class ZSocket : IDisposable
 	{
-		private static readonly ElasticPoll _elasticPoll = new ElasticPoll();
+		private static readonly ElasticPoll _elasticPoll = ElasticPoll.Instance.Value;
 
 		public const int DefaultTimeout = 2000;
 
@@ -109,10 +108,16 @@ namespace ZMQ.Extensions
 		}
 	}
 
-	public class ElasticPoll
+	public class ElasticPoll : IDisposable
 	{
+		private static log4net.ILog logger = log4net.LogManager.GetLogger(typeof(ElasticPoll));
+
+		public static Lazy<ElasticPoll> Instance = new Lazy<ElasticPoll>(() => new ElasticPoll());
+
 		private readonly Dictionary<SocketType, ConcurrentDictionary<string, ConcurrentQueue<Socket>>> map = 
 			new Dictionary<SocketType, ConcurrentDictionary<string, ConcurrentQueue<Socket>>>();
+
+		private bool disposed;
 
 		public ElasticPoll()
 		{
@@ -127,6 +132,8 @@ namespace ZMQ.Extensions
 
 		public Socket Connect(string uri, SocketType socketType)
 		{
+			EnsureNotDisposed();
+
 			var queues = map[socketType];
 
 			ConcurrentQueue<Socket> q;
@@ -162,6 +169,8 @@ namespace ZMQ.Extensions
 
 		public void Return(Socket socket, SocketType socketType)
 		{
+			EnsureNotDisposed();
+
 			var queues = map[socketType];
 
 			ConcurrentQueue<Socket> q;
@@ -170,6 +179,43 @@ namespace ZMQ.Extensions
 				q.Enqueue(socket);
 			else
 				socket.Dispose();
+		}
+
+		private void EnsureNotDisposed()
+		{
+			if (disposed)
+				throw new ObjectDisposedException("ElasticPoll is already disposed.");
+		}
+
+		public void Dispose()
+		{
+			if (disposed) return;
+
+			disposed = true;
+
+			foreach (var socketGroup in map.Values)
+			{
+				var group = socketGroup;
+
+				foreach (var sockets in group.Values)
+				{
+					while (sockets.Count > 0)
+					{
+						try
+						{
+							Socket s;
+
+							if (sockets.TryDequeue(out s))
+								s.Dispose();
+						}
+						catch (System.Exception ex)
+						{
+							logger.Warn("Error disposing socket", ex);
+						}
+					}
+				}
+				
+			}
 		}
 	}
 }

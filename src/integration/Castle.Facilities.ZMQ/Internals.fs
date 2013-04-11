@@ -188,3 +188,21 @@ open Castle.Facilities.ZMQ
         override this.ProcessModel(kernel, model) =
             if (model.Services |> Seq.exists (fun s -> s.IsDefined(typeof<RemoteServiceAttribute>, false))) then
                 this.add_interceptor(model)
+
+    type Reaper(zContextAccessor:ZContextAccessor) =
+        static let logger = log4net.LogManager.GetLogger(typeof<Reaper>)
+
+        let dispose() = 
+            logger.Info("Disposing ZeroMQ Facility...")
+
+            let pool = ElasticPoll.Instance.Value
+
+            pool.Dispose()
+
+            zContextAccessor.Dispose()
+
+            logger.Info("Disposed ZeroMQ Facility.")
+
+        interface IDisposable with
+            
+            member this.Dispose() = dispose()

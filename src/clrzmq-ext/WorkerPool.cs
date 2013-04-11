@@ -21,7 +21,9 @@
 using System.Threading;
 
 namespace ZMQ.ZMQDevice {
-    /// <summary>
+	using System;
+
+	/// <summary>
     /// Worker pool device
     /// </summary>
     public class WorkerPool : Queue {
@@ -39,5 +41,22 @@ namespace ZMQ.ZMQDevice {
                 workerThreads[count].Start();
             }
         }
+
+	    protected override void Dispose(bool disposing)
+	    {
+			if (workerThreads != null)
+				foreach (var workerThread in workerThreads)
+				{
+					try
+					{
+						workerThread.Abort();
+					}
+					catch (ThreadAbortException)
+					{
+					}
+				}
+
+		    base.Dispose(disposing);
+	    }
     }
 }
