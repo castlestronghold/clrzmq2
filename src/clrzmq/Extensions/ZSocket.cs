@@ -5,10 +5,12 @@ namespace ZMQ.Extensions
 	using System.Collections.Generic;
 	using System.Text;
 	using ZMQ;
+	using Exception = System.Exception;
 
 	public class ZSocket : IDisposable
 	{
-		private static readonly ElasticPoll _elasticPoll = ElasticPoll.Instance.Value;
+		private static readonly log4net.ILog logger = log4net.LogManager.GetLogger(typeof(SocketManager));
+		private static readonly SocketManager socketManager = SocketManager.Instance.Value;
 
 		public const int DefaultTimeout = 2000;
 
@@ -27,26 +29,37 @@ namespace ZMQ.Extensions
 
 		public virtual void Connect(Transport transport, string address, uint port)
 		{
-			socket = _elasticPoll.Connect(Socket.BuildUri(transport, address, port), Type);
+			socket = socketManager.Connect(Socket.BuildUri(transport, address, port), Type);
 		}
 
 		public virtual void Connect(string uri)
 		{
-			socket = _elasticPoll.Connect(uri, Type);
+			socket = socketManager.Connect(uri, Type);
 		}
 
 		public virtual void Bind(Transport transport, string address, uint port)
 		{
 			if (socket == null)
+			{
 				socket = new Socket(Type);
+
+				socketManager.Registry(socket);
+			}
 
 			socket.Bind(Socket.BuildUri(transport, address, port));
 		}
 
 		public virtual void Dispose()
 		{
-			if (socket != null)
-				_elasticPoll.Return(socket, Type);
+			try
+			{
+				if (socket != null)
+					socketManager.ReturnOrDispose(socket, Type);
+			}
+			catch (Exception e)
+			{
+				logger.Error("Error disposing ZSocket.", e);
+			}
 		}
 
 		public virtual void Send(string message, Encoding encoding)
@@ -76,7 +89,7 @@ namespace ZMQ.Extensions
 			catch (ZMQ.Exception e)
 			{
 				failed = true;
-				socket = ElasticPoll.CreateSocket(socket.Address, Type);
+				socket = SocketManager.CreateSocket(socket.Address, Type);
 			}
 
 			if (failed)
@@ -108,25 +121,27 @@ namespace ZMQ.Extensions
 		}
 	}
 
-	public class ElasticPoll : IDisposable
+	public class SocketManager : IDisposable
 	{
-		private static log4net.ILog logger = log4net.LogManager.GetLogger(typeof(ElasticPoll));
+		private static readonly log4net.ILog logger = log4net.LogManager.GetLogger(typeof(SocketManager));
 
-		public static Lazy<ElasticPoll> Instance = new Lazy<ElasticPoll>(() => new ElasticPoll());
+		public static Lazy<SocketManager> Instance = new Lazy<SocketManager>(() => new SocketManager());
 
-		private readonly Dictionary<SocketType, ConcurrentDictionary<string, ConcurrentQueue<Socket>>> map = 
+		private readonly Dictionary<SocketType, ConcurrentDictionary<string, ConcurrentQueue<Socket>>> elasticPoll = 
 			new Dictionary<SocketType, ConcurrentDictionary<string, ConcurrentQueue<Socket>>>();
+
+		private readonly List<Socket> listeners = new List<Socket>();
 
 		private bool disposed;
 
-		public ElasticPoll()
+		public SocketManager()
 		{
 			foreach (var s in Enum.GetNames(typeof(SocketType)))
 			{
 				var type = (SocketType)Enum.Parse(typeof(SocketType), s);
 
-				if (!map.ContainsKey(type))
-					map.Add(type, new ConcurrentDictionary<string, ConcurrentQueue<Socket>>());
+				if (!elasticPoll.ContainsKey(type))
+					elasticPoll.Add(type, new ConcurrentDictionary<string, ConcurrentQueue<Socket>>());
 			}
 		}
 
@@ -134,7 +149,7 @@ namespace ZMQ.Extensions
 		{
 			EnsureNotDisposed();
 
-			var queues = map[socketType];
+			var queues = elasticPoll[socketType];
 
 			ConcurrentQueue<Socket> q;
 
@@ -167,24 +182,32 @@ namespace ZMQ.Extensions
 			return s;
 		}
 
-		public void Return(Socket socket, SocketType socketType)
+		public void ReturnOrDispose(Socket socket, SocketType socketType)
 		{
 			EnsureNotDisposed();
 
-			var queues = map[socketType];
+			var queues = elasticPoll[socketType];
 
 			ConcurrentQueue<Socket> q;
 
 			if (queues != null && queues.TryGetValue(socket.Address, out q))
 				q.Enqueue(socket);
 			else
-				socket.Dispose();
+				Close(socket);
+		}
+
+		private void Close(Socket socket)
+		{
+			if (listeners.Contains(socket))
+				listeners.Remove(socket);
+
+			socket.Dispose();
 		}
 
 		private void EnsureNotDisposed()
 		{
 			if (disposed)
-				throw new ObjectDisposedException("ElasticPoll is already disposed.");
+				throw new ObjectDisposedException("SocketManager is already disposed.");
 		}
 
 		public void Dispose()
@@ -193,7 +216,21 @@ namespace ZMQ.Extensions
 
 			disposed = true;
 
-			foreach (var socketGroup in map.Values)
+			foreach (var listener in listeners)
+			{
+				logger.Warn("Disposing listeners...");
+
+				try
+				{
+					listener.Dispose();
+				}
+				catch (System.Exception ex)
+				{
+					logger.Warn("Error disposing socket", ex);
+				}
+			}
+
+			foreach (var socketGroup in elasticPoll.Values)
 			{
 				var group = socketGroup;
 
@@ -204,6 +241,8 @@ namespace ZMQ.Extensions
 						try
 						{
 							Socket s;
+
+							logger.Warn("Disposing req...");
 
 							if (sockets.TryDequeue(out s))
 								s.Dispose();
@@ -216,6 +255,11 @@ namespace ZMQ.Extensions
 				}
 				
 			}
+		}
+
+		public void Registry(Socket listener)
+		{
+			listeners.Add(listener);
 		}
 	}
 }

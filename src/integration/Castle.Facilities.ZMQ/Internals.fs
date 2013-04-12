@@ -193,15 +193,16 @@ open Castle.Facilities.ZMQ
         static let logger = log4net.LogManager.GetLogger(typeof<Reaper>)
 
         let dispose() = 
-            logger.Info("Disposing ZeroMQ Facility...")
+            try
+                logger.Info("Disposing ZeroMQ Facility...")
 
-            let pool = ElasticPoll.Instance.Value
+                let pool = SocketManager.Instance.Value
 
-            pool.Dispose()
+                pool.Dispose()
 
-            zContextAccessor.Dispose()
-
-            logger.Info("Disposed ZeroMQ Facility.")
+                logger.Info("Disposed ZeroMQ Facility.")
+             with
+                | :? Exception as ex -> logger.Error("Error disponsing ZeroMQ Facility components", ex)
 
         interface IDisposable with
             

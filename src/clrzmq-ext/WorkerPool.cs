@@ -44,6 +44,8 @@ namespace ZMQ.ZMQDevice {
 
 	    protected override void Dispose(bool disposing)
 	    {
+			base.Dispose(disposing);
+
 			if (workerThreads != null)
 				foreach (var workerThread in workerThreads)
 				{
@@ -55,8 +57,6 @@ namespace ZMQ.ZMQDevice {
 					{
 					}
 				}
-
-		    base.Dispose(disposing);
 	    }
     }
 }
