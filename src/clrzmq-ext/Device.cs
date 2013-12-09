@@ -25,7 +25,7 @@ using System.Threading;
 
 namespace ZMQ.ZMQDevice {
     public abstract class Device : IDisposable {
-	    private static readonly log4net.ILog logger = log4net.LogManager.GetLogger(typeof(Device));
+	    //private static readonly log4net.ILog logger = log4net.LogManager.GetLogger(typeof(Device));
 
         private const long PollingIntervalUsec = 750000;
 
@@ -71,19 +71,19 @@ namespace ZMQ.ZMQDevice {
         }
 
         protected virtual void Dispose(bool disposing) {
-			logger.Debug("Disposing Device...");
+			//logger.Debug("Disposing Device...");
 
             if (_isRunning) {
                 Stop();
 	            _runningThread.Join((int)PollingIntervalUsec * 2 / 1000);
 
-				logger.Debug("Running thread joined...");
+				//logger.Debug("Running thread joined...");
             }
 
             _frontend.Dispose();
             _backend.Dispose();
 
-			logger.Debug("Deviced disposed.");
+			//logger.Debug("Deviced disposed.");
         }
 
         protected abstract void FrontendHandler(Socket socket, IOMultiPlex revents);
@@ -114,8 +114,8 @@ namespace ZMQ.ZMQDevice {
 		        while (_run) {
 			        var poller = Context.Poller(skts, PollingIntervalUsec);
 
-					if (logger.IsDebugEnabled)
-						logger.Debug("RunningLoop Context Polling Result: " + poller);
+					//if (logger.IsDebugEnabled)
+					//	logger.Debug("RunningLoop Context Polling Result: " + poller);
 		        }
 
 		        IsRunning = false;
@@ -123,7 +123,7 @@ namespace ZMQ.ZMQDevice {
 	        }
 	        catch (Exception e)
 	        {
-				logger.Fatal("Error on RunningLoop", e);
+				//logger.Fatal("Error on RunningLoop", e);
 	        }
         }
     }
