@@ -15,7 +15,7 @@ _ReSharper*
 /packages
 /publish
 nuget.exe
-lib/**/libzmq.dll
+# lib/**/libzmq.dll
 *.snk
 *ReSharper.*
 *.resharper.user
