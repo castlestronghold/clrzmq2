@@ -1084,6 +1084,22 @@ namespace ZMQ {
             }
         }
 
+		/// <summary>
+		/// Get or Set Recv Timeout
+		/// </summary>
+		/// <exception cref="ZMQ.Exception">ZMQ Exception</exception>
+		public int RecvTimeout
+		{
+			get
+			{
+				return (int) GetSockOpt(SocketOpt.RCVTIMEO);
+			}
+			set
+			{
+				SetSockOpt(SocketOpt.RCVTIMEO, value);
+			}
+		}
+
         /// <summary>
         /// Get or Set maximum reconnection interval
         /// </summary>

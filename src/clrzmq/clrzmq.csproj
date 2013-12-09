@@ -106,7 +106,7 @@
     <DefineConstants>TRACE;DEBUG;x86 NET_4</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
@@ -148,6 +148,7 @@
     <Compile Include="Enums.cs" />
     <Compile Include="Extensions\BaseListener.cs" />
     <Compile Include="Extensions\BaseRequest.cs" />
+    <Compile Include="Extensions\SocketManager.cs" />
     <Compile Include="Extensions\ZConfig.cs" />
     <Compile Include="Extensions\ZContextAccessor.cs" />
     <Compile Include="Extensions\ZSocket.cs" />

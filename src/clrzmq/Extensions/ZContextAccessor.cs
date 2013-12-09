@@ -5,7 +5,7 @@ namespace ZMQ.Extensions
 
 	public class ZContextAccessor : IDisposable
 	{
-		private const int IoThreads = 1;
+		private const int IoThreads = 2;
 
 		private readonly Lazy<Context> context = new Lazy<Context>(() => new Context(IoThreads), true);
 
@@ -23,8 +23,8 @@ namespace ZMQ.Extensions
 
 		public void Dispose()
 		{
-			if (context.IsValueCreated)
-				context.Value.Dispose();
+			//if (context.IsValueCreated)
+			//	context.Value.Dispose();
 		}
 
 		public static ZContextAccessor New(Func<SocketType, ZSocket> socketFactory) 

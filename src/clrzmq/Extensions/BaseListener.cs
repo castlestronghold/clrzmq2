@@ -86,7 +86,7 @@
 
 					try
 					{
-						var bytes = zSocket.Recv(int.MaxValue);
+						var bytes = zSocket.Recv(ZSocket.InfiniteTimeout);
 
 						byte[] reply = null;
 

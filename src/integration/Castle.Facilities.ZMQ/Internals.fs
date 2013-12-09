@@ -125,11 +125,12 @@ open Castle.Facilities.ZMQ
 
         override this.GetConfig() = config.Force()
 
+        override this.Timeout with get() = 7500
+
         override this.InternalGet(socket) =
             socket.Send(serialize_with_netbinary(message))
 
-            let timeout = 7500
-            let bytes = socket.Recv(timeout)
+            let bytes = socket.Recv(ZSocket.InfiniteTimeout)
 
             deserialize_with_netbinary<ResponseMessage>(bytes)
 
@@ -199,6 +200,8 @@ open Castle.Facilities.ZMQ
                 let pool = SocketManager.Instance.Value
 
                 pool.Dispose()
+
+                //zContextAccessor.Current.Dispose()
 
                 logger.Info("Disposed ZeroMQ Facility.")
              with

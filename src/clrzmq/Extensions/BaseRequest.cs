@@ -26,7 +26,7 @@
 
 				using (var socket = ContextAccessor.SocketFactory(SocketType.REQ))
 				{
-					socket.Connect(config.Transport, config.Ip, config.Port);
+					socket.Connect(config.Transport, config.Ip, config.Port, Timeout);
 
 					Logger.DebugFormat("Connecting {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
 
@@ -65,6 +65,11 @@
 
 		protected abstract void InternalInvoke(ZSocket socket);
 
+		protected virtual int Timeout
+		{
+			get { return -1; }
+		}
+
 		public virtual void Invoke()
 		{
 			try
@@ -73,7 +78,7 @@
 
 				using (var socket = ContextAccessor.SocketFactory(SocketType.REQ))
 				{
-					socket.Connect(config.Transport, config.Ip, config.Port);
+					socket.Connect(config.Transport, config.Ip, config.Port, Timeout);
 
 					Logger.DebugFormat("Connecting {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
 

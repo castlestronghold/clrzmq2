@@ -59,6 +59,8 @@ namespace ZMQ {
         BACKLOG = 19,
         RECOVERY_IVL_MSEC = 20,
         RECONNECT_IVL_MAX = 21,
+		RCVTIMEO = 27,
+		SNDTIMEO = 28
     }
 
     /// <summary>
