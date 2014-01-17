@@ -134,6 +134,7 @@
       <HintPath>..\..\lib\log4net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
   </ItemGroup>
@@ -145,6 +146,7 @@
       <Link>Properties\VersionInfo.cs</Link>
     </Compile>
     <Compile Include="Context.cs" />
+    <Compile Include="Counters\PerfCounterRegistry.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Extensions\BaseListener.cs" />
     <Compile Include="Extensions\BaseRequest.cs" />

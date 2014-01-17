@@ -5,10 +5,15 @@
 	using System.Threading;
 	using Castle.Core.Logging;
 	using ZMQ;
+	using ZMQ.Counters;
 	using Exception = System.Exception;
 
 	public abstract class BaseListener : IDisposable
 	{
+		protected static PerformanceCounter receivedCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfRequestsReceived);
+		protected static PerformanceCounter sentCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfResponseSent);
+		protected static PerformanceCounter replyCounter = PerfCounterRegistry.Get(PerfCounters.AverageReplyTime);
+
 		private Thread thread;
 		private bool disposed;
 
@@ -90,6 +95,8 @@
 
 						byte[] reply = null;
 
+						receivedCounter.Increment();
+
 						try
 						{
 							reply = bytes == null ? new byte[0] : GetReplyFor(bytes, zSocket);
@@ -101,10 +108,16 @@
 						finally
 						{
 							zSocket.Send(reply ?? new byte[0]);
+
+							sentCounter.Increment();
 						}
 					}
 					finally
 					{
+						watch.Stop();
+
+						replyCounter.IncrementBy(watch.ElapsedMilliseconds);
+
 						if (Logger.IsDebugEnabled)
 							Logger.Debug("Listener Recv Took: " + watch.ElapsedMilliseconds);
 					}

@@ -5,6 +5,7 @@ open ZMQ.Extensions
 open ZMQ.ZMQDevice
 open System
 open System.IO
+open System.Diagnostics
 open System.Reflection
 open System.Collections.Generic
 open System.Threading
@@ -18,6 +19,7 @@ open Castle.MicroKernel.Facilities
 open Castle.MicroKernel.ModelBuilder.Inspectors
 open Castle.MicroKernel.Registration
 open Castle.Facilities.ZMQ
+open ZMQ.Counters
 
     [<Serializable>]
     type RequestMessage(service:string, methd:string, parms:obj array) =
@@ -119,6 +121,10 @@ open Castle.Facilities.ZMQ
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
         inherit BaseRequest<ResponseMessage>(zContextAccessor)
 
+        let sentCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfRequestsSent)
+        let receivedCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfResponseReceived)
+        let elapsedCounter = PerfCounterRegistry.Get(PerfCounters.AverageRequestTime)
+
         let config = lazy
                         let parts = endpoint.Split(':')
                         ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
@@ -128,9 +134,21 @@ open Castle.Facilities.ZMQ
         override this.Timeout with get() = 7500
 
         override this.InternalGet(socket) =
+            let watch = new Stopwatch()
+
+            watch.Start()
+
             socket.Send(serialize_with_netbinary(message))
 
+            sentCounter.Increment() |> ignore
+
             let bytes = socket.Recv(ZSocket.InfiniteTimeout)
+
+            receivedCounter.Increment() |> ignore
+
+            watch.Stop()
+
+            elapsedCounter.IncrementBy(watch.ElapsedMilliseconds) |> ignore
 
             deserialize_with_netbinary<ResponseMessage>(bytes)
 
@@ -143,6 +161,9 @@ open Castle.Facilities.ZMQ
 
         member this.GetEndpoint(assembly:Assembly) =
             routes.[assembly.GetName().Name]
+
+        member this.ReRoute(assembly: string, address: string) =
+            routes.[assembly] <- address
 
     type RemoteRequestInterceptor(zContextAccessor:ZContextAccessor, router:RemoteRouter) =
         static let logger = log4net.LogManager.GetLogger(typeof<RemoteRequestInterceptor>)

@@ -24,7 +24,10 @@ using System.Collections.Generic;
 using System.Threading;
 
 namespace ZMQ.ZMQDevice {
-    public abstract class Device : IDisposable {
+	using System.Diagnostics;
+	using ZMQ.Counters;
+
+	public abstract class Device : IDisposable {
 	    private static readonly log4net.ILog logger = log4net.LogManager.GetLogger(typeof(Device));
 
         private const long PollingIntervalUsec = 750000;
@@ -131,7 +134,11 @@ namespace ZMQ.ZMQDevice {
     /// <summary>
     /// Standard Queue Device
     /// </summary>
-    public class Queue : Device {
+    public class Queue : Device
+    {
+		private static readonly PerformanceCounter backendCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfCallForwardedToBackend);
+		private static readonly PerformanceCounter frontendCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfCallForwardedToFrontend);
+
         public Queue(Context context, string frontendAddr, string backendAddr)
             : base(context.Socket(SocketType.XREP), context.Socket(SocketType.XREQ)) {
             _frontend.Bind(frontendAddr);
@@ -147,11 +154,13 @@ namespace ZMQ.ZMQDevice {
 
         protected override void FrontendHandler(Socket socket, IOMultiPlex revents) {
             socket.Forward(_backend);
+			backendCounter.Increment();
         }
 
         protected override void BackendHandler(Socket socket, IOMultiPlex revents) {
             socket.Forward(_frontend);
-        }
+			frontendCounter.Increment();
+		}
     }
 
     public class Forwarder : Device {
