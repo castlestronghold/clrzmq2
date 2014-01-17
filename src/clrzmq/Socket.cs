@@ -34,6 +34,8 @@ namespace ZMQ {
     /// ZMQ Socket
     /// </summary>
     public class Socket : IDisposable {
+		private static readonly log4net.ILog logger = log4net.LogManager.GetLogger(typeof(Socket));
+
         private static Context _appContext;
         private static int _appSocketCount;
         private static readonly Object _lockObj = new object();
@@ -528,10 +530,13 @@ namespace ZMQ {
                     C.zmq_msg_close(_msg);
                     break;
                 }
-                if (C.zmq_errno() == (int)ERRNOS.EINTR) {
+	            
+				var zmqErrno = C.zmq_errno();
+
+	            if (zmqErrno == (int)ERRNOS.EINTR) {
                     continue;
                 }
-                if (C.zmq_errno() != (int)ERRNOS.EAGAIN) {
+                if (zmqErrno != (int)ERRNOS.EAGAIN) {
                     throw new Exception();
                 }
                 break;
