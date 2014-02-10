@@ -4,6 +4,7 @@
 	using Castle.MicroKernel.Registration;
 	using Castle.Windsor;
 	using Castle.Windsor.Configuration.Interpreters;
+	using FluentAssertions;
 	using NUnit.Framework;
 
 
@@ -67,10 +68,31 @@
 		}
 
 		[Test]
-		public void A()
+		public void NoParamsOrReturnCall()
 		{
 			var service = _containerClient.Resolve<IRemoteServ1>();
 			service.NoParamsOrReturn();
+		}
+
+		[Test]
+		public void JustParamsCall()
+		{
+			var service = _containerClient.Resolve<IRemoteServ1>();
+			service.JustParams("1");
+		}
+
+		[Test]
+		public void JustReturnCall()
+		{
+			var service = _containerClient.Resolve<IRemoteServ1>();
+			service.JustReturn().Should().Be("");
+		}
+		
+		[Test]
+		public void ParamsAndReturnCall()
+		{
+			var service = _containerClient.Resolve<IRemoteServ1>();
+			service.ParamsAndReturn("").Should().Be("");
 		}
 	}
 }
