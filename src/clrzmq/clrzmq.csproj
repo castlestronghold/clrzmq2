@@ -147,7 +147,9 @@
     <Compile Include="Context.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Extensions\BaseListener.cs" />
+    <Compile Include="Extensions\BasePublisher.cs" />
     <Compile Include="Extensions\BaseRequest.cs" />
+    <Compile Include="Extensions\BaseSubscriber.cs" />
     <Compile Include="Extensions\SocketManager.cs" />
     <Compile Include="Extensions\ZConfig.cs" />
     <Compile Include="Extensions\ZContextAccessor.cs" />

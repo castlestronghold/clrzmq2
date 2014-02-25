@@ -81,7 +81,7 @@ open Castle.Facilities.ZMQ
 
                 base.AcceptAndHandleMessage(socket)
             with
-                | :? Exception as ex -> base.Logger.Fatal("Error creating worker thread", ex)
+                | ex -> base.Logger.Fatal("Error creating worker thread", ex)
 
         override this.GetConfig() = config.Force()
 
@@ -96,7 +96,7 @@ open Castle.Facilities.ZMQ
                                 ResponseMessage(serialize_with_netbinary(result), null)
                             with
                                 | :? TargetInvocationException as ex -> ResponseMessage(null, ex.InnerException)
-                                | :? Exception as ex -> ResponseMessage(null, ex)
+                                | ex -> ResponseMessage(null, ex)
 
             serialize_with_netbinary(response)
 
@@ -150,7 +150,7 @@ open Castle.Facilities.ZMQ
         interface IInterceptor with
             
             member this.Intercept(invocation) =
-                let stopwatch = new System.Diagnostics.Stopwatch()
+                let stopwatch = System.Diagnostics.Stopwatch()
                 
                 if logger.IsDebugEnabled then
                     stopwatch.Start()
@@ -205,7 +205,7 @@ open Castle.Facilities.ZMQ
 
                 logger.Info("Disposed ZeroMQ Facility.")
              with
-                | :? Exception as ex -> logger.Error("Error disponsing ZeroMQ Facility components", ex)
+                | ex -> logger.Error("Error disponsing ZeroMQ Facility components", ex)
 
         interface IDisposable with
             
