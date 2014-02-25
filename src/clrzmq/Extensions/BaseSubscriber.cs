@@ -43,7 +43,7 @@ namespace ZMQ.Extensions
 			}
 			catch (System.Exception e)
 			{
-				Logger.Error("Error on starting subscriber.", e);
+				Logger.Error("Error starting subscriber.", e);
 			}
 		}
 
@@ -88,7 +88,7 @@ namespace ZMQ.Extensions
 			}
 			finally
 			{
-				_socket.Dispose();
+				CleanUp();
 			}
 		}
 
@@ -96,12 +96,26 @@ namespace ZMQ.Extensions
 
 		protected abstract T Deserialize(byte[] bytes);
 
+		[SecurityCritical]
 		public void Dispose()
 		{
 			if (_disposed) return;
 
-			_disposed = true;
-			Thread.MemoryBarrier();
+			if (_thread != null && _thread.IsAlive)
+			{
+				_disposed = true;
+				Thread.MemoryBarrier();
+			}
+			else
+			{
+				CleanUp();
+			}
+		}
+
+		private void CleanUp()
+		{
+			if (_socket != null)
+				_socket.Dispose();
 		}
 	}
 }

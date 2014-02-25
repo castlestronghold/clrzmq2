@@ -92,9 +92,7 @@ namespace ZMQ.Extensions
 			}
 			finally
 			{
-				_socket.Dispose();
-
-				_waitHandle.Dispose();
+				CleanUp();
 			}
 		}
 
@@ -105,7 +103,6 @@ namespace ZMQ.Extensions
 			Dispose();
 		}
 
-		// [HandleProcessCorruptedStateExceptions, SecurityCritical]
 		[SecurityCritical]
 		public virtual void Dispose()
 		{
@@ -113,6 +110,23 @@ namespace ZMQ.Extensions
 
 			_disposed = true;
 			Thread.MemoryBarrier();
+
+			if (_thread != null && _thread.IsAlive)
+			{
+				_waitHandle.Set(); // let thread finish it
+			}
+			else
+			{
+				CleanUp();
+			}
+		}
+
+		private void CleanUp()
+		{
+			if (_socket != null)
+				_socket.Dispose();
+
+			_waitHandle.Dispose();
 		}
 	}
 }
