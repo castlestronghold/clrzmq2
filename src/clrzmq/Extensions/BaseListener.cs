@@ -12,7 +12,8 @@
 	{
 		protected static PerformanceCounter receivedCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfRequestsReceived);
 		protected static PerformanceCounter sentCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfResponseSent);
-		protected static PerformanceCounter replyCounter = PerfCounterRegistry.Get(PerfCounters.AverageReplyTime);
+		protected static PerformanceCounter timerReplyCounter = PerfCounterRegistry.Get(PerfCounters.AverageReplyTime);
+		protected static PerformanceCounter baseReplyCounter = PerfCounterRegistry.Get(PerfCounters.BaseReplyTime);
 
 		private Thread thread;
 		private bool disposed;
@@ -116,7 +117,8 @@
 					{
 						watch.Stop();
 
-						replyCounter.IncrementBy(watch.ElapsedMilliseconds);
+						timerReplyCounter.IncrementBy(watch.ElapsedTicks);
+						baseReplyCounter.Increment();
 
 						if (Logger.IsDebugEnabled)
 							Logger.Debug("Listener Recv Took: " + watch.ElapsedMilliseconds);
