@@ -20,6 +20,7 @@ open Castle.MicroKernel.ModelBuilder.Inspectors
 open Castle.MicroKernel.Registration
 open Castle.Facilities.ZMQ
 open ZMQ.Counters
+open System.Runtime.Remoting.Messaging
 
     [<Serializable>]
     type RequestMessage(service:string, methd:string, parms:obj array) =
@@ -124,6 +125,7 @@ open ZMQ.Counters
         let sentCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfRequestsSent)
         let receivedCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfResponseReceived)
         let elapsedCounter = PerfCounterRegistry.Get(PerfCounters.AverageRequestTime)
+        let baseElapsedCounter = PerfCounterRegistry.Get(PerfCounters.BaseRequestTime)
 
         let config = lazy
                         let parts = endpoint.Split(':')
@@ -143,12 +145,14 @@ open ZMQ.Counters
             sentCounter.Increment() |> ignore
 
             let bytes = socket.Recv(ZSocket.InfiniteTimeout)
-
-            receivedCounter.Increment() |> ignore
-
+            
             watch.Stop()
 
-            elapsedCounter.IncrementBy(watch.ElapsedMilliseconds) |> ignore
+            if bytes <> null then
+                receivedCounter.Increment() |> ignore
+
+                elapsedCounter.IncrementBy(watch.ElapsedTicks) |> ignore
+                baseElapsedCounter.Increment() |> ignore
 
             deserialize_with_netbinary<ResponseMessage>(bytes)
 
@@ -160,7 +164,23 @@ open ZMQ.Counters
                 routes.Add(child.Attributes.["assembly"], child.Attributes.["address"])
 
         member this.GetEndpoint(assembly:Assembly) =
-            routes.[assembly.GetName().Name]
+            let overriden = CallContext.GetData("0mq.facility.endpoint") :?> string
+
+            if String.IsNullOrEmpty(overriden) then routes.[assembly.GetName().Name] else overriden
+
+        member this.ReRoute(assembly: string, address: string) =
+            routes.[assembly] <- address
+
+    type AlternativeRouteContext(route: string) =
+        do
+           CallContext.SetData("0mq.facility.endpoint", route)
+
+        interface IDisposable with
+            member x.Dispose() =
+                CallContext.SetData("0mq.facility.endpoint", null)
+
+        static member For(r: string) =
+            (new AlternativeRouteContext(r)) :> IDisposable
 
         member this.ReRoute(assembly: string, address: string) =
             routes.[assembly] <- address

@@ -6,7 +6,7 @@
 
 	public class PerfCounterRegistry
 	{
-		public const string CategoryName = "Clear";
+		public const string CategoryName = "0MQ";
 
 		private static readonly Dictionary<string, PerformanceCounterType> registry = new Dictionary<string, PerformanceCounterType>();
 		private static readonly Dictionary<string, PerformanceCounter> counters = new Dictionary<string, PerformanceCounter>();
@@ -25,23 +25,24 @@
 		{
 			var key = counter + " - " + instance;
 
-			if (!counters.ContainsKey(key))
-			{
-				RegisterAll();
-
-				var performanceCounter = new PerformanceCounter
+			lock (counters)
+				if (!counters.ContainsKey(key))
 				{
-					CategoryName = CategoryName,
-					CounterName = counter,
-					InstanceName = instance,
-					ReadOnly = false,
-					InstanceLifetime = PerformanceCounterInstanceLifetime.Process
-				};
+					RegisterAll();
 
-				performanceCounter.RawValue = 0;
+					var performanceCounter = new PerformanceCounter
+					{
+						CategoryName = CategoryName,
+						CounterName = counter,
+						InstanceName = instance,
+						ReadOnly = false,
+						InstanceLifetime = PerformanceCounterInstanceLifetime.Process
+					};
 
-				counters.Add(key, performanceCounter);
-			}
+					performanceCounter.RawValue = 0;
+
+					counters.Add(key, performanceCounter);
+				}
 
 			return counters[key];
 		}
@@ -55,7 +56,11 @@
 				registry.Add(PerfCounters.NumberOfResponseSent, PerformanceCounterType.RateOfCountsPerSecond32);
 				registry.Add(PerfCounters.NumberOfRequestsSent, PerformanceCounterType.RateOfCountsPerSecond32);
 				registry.Add(PerfCounters.AverageReplyTime, PerformanceCounterType.AverageTimer32);
+				registry.Add(PerfCounters.BaseReplyTime, PerformanceCounterType.AverageBase);
 				registry.Add(PerfCounters.AverageRequestTime, PerformanceCounterType.AverageTimer32);
+				registry.Add(PerfCounters.BaseRequestTime, PerformanceCounterType.AverageBase);
+				registry.Add(PerfCounters.NumberOfCallForwardedToBackend, PerformanceCounterType.RateOfCountsPerSecond32);
+				registry.Add(PerfCounters.NumberOfCallForwardedToFrontend, PerformanceCounterType.RateOfCountsPerSecond32);
 			}
 
 			Synchronize();
@@ -118,5 +123,8 @@
 
 		public const string NumberOfCallForwardedToFrontend = "# of Forwarded To Frontend / sec";
 		public const string NumberOfCallForwardedToBackend = "# of Forwarded To Backend / sec";
+
+		public const string BaseReplyTime = "Base Average Reply Time";
+		public const string BaseRequestTime = "Base Average Request Time";
 	}
 }
