@@ -83,7 +83,7 @@ open ZMQ.Counters
 
                 base.AcceptAndHandleMessage(socket)
             with
-                | :? Exception as ex -> base.Logger.Fatal("Error creating worker thread", ex)
+                | ex -> base.Logger.Fatal("Error creating worker thread", ex)
 
         override this.GetConfig() = config.Force()
 
@@ -98,7 +98,7 @@ open ZMQ.Counters
                                 ResponseMessage(serialize_with_netbinary(result), null)
                             with
                                 | :? TargetInvocationException as ex -> ResponseMessage(null, ex.InnerException)
-                                | :? Exception as ex -> ResponseMessage(null, ex)
+                                | ex -> ResponseMessage(null, ex)
 
             serialize_with_netbinary(response)
 
@@ -171,7 +171,7 @@ open ZMQ.Counters
         interface IInterceptor with
             
             member this.Intercept(invocation) =
-                let stopwatch = new System.Diagnostics.Stopwatch()
+                let stopwatch = System.Diagnostics.Stopwatch()
                 
                 if logger.IsDebugEnabled then
                     stopwatch.Start()
@@ -226,7 +226,7 @@ open ZMQ.Counters
 
                 logger.Info("Disposed ZeroMQ Facility.")
              with
-                | :? Exception as ex -> logger.Error("Error disponsing ZeroMQ Facility components", ex)
+                | ex -> logger.Error("Error disponsing ZeroMQ Facility components", ex)
 
         interface IDisposable with
             
