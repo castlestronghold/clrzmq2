@@ -182,9 +182,6 @@ open System.Runtime.Remoting.Messaging
         static member For(r: string) =
             (new AlternativeRouteContext(r)) :> IDisposable
 
-        member this.ReRoute(assembly: string, address: string) =
-            routes.[assembly] <- address
-
     type RemoteRequestInterceptor(zContextAccessor:ZContextAccessor, router:RemoteRouter) =
         static let logger = log4net.LogManager.GetLogger(typeof<RemoteRequestInterceptor>)
 

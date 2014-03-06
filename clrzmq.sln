@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30110.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{1C71420E-3277-4855-A266-E50593D8164D}"
 	ProjectSection(SolutionItems) = preProject
 		AUTHORS = AUTHORS
@@ -29,6 +31,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{FD546D7B
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "facility", "facility", "{675C6614-E0C3-405D-AB3D-3D2ACAF7E506}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{65ED1A0F-37AA-4F3B-9C5F-86E0FC573032}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "local_lat", "perf\local_lat\local_lat.csproj", "{E30D3D43-99B4-48ED-B060-56D88C77CCD0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "local_thr", "perf\local_thr\local_thr.csproj", "{CB79FF77-F94F-4E4B-A860-7BF941EAA2B6}"
@@ -54,13 +63,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "src\integration\Server\Server.csproj", "{099D078F-9610-4F0D-89FF-D506D1654DA5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityTests", "tests\FacilityTests\FacilityTests.csproj", "{8682154A-2DC4-495B-BAC1-C62F7274DB83}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{65ED1A0F-37AA-4F3B-9C5F-86E0FC573032}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
-	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -485,6 +487,7 @@ Global
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_DEBUG|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_DEBUG|Mixed Platforms.Build.0 = Release|Any CPU
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_DEBUG|x64.ActiveCfg = Release|Any CPU
+		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_DEBUG|x64.Build.0 = Release|Any CPU
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_DEBUG|x86.ActiveCfg = Debug|Any CPU
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_RELEASE|Any CPU.ActiveCfg = Release|Any CPU
 		{96B09FDF-5173-417E-BF01-9ECC5F96FDCE}.WIN_RELEASE|Any CPU.Build.0 = Release|Any CPU
