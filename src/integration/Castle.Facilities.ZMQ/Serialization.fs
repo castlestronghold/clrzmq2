@@ -15,9 +15,14 @@ module Serialization
     let internal netbinarySerializer = new NetDataContractSerializer();
 
     let serialize_with_netbinary(instance: 'a) =
+        let watch = System.Diagnostics.Stopwatch()
+        watch.Start()
+
         use input = new MemoryStream()
         netbinarySerializer.Serialize(input, instance)
         input.Flush()
+        watch.Stop()
+        Console.Out.WriteLine ("serialize_with_netbinary {0} elapsed {1}", input.Length, watch.ElapsedMilliseconds)
         input.ToArray()
 
     let deserialize_with_netbinary<'a> (bytes:byte array) : 'a =

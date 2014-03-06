@@ -7,6 +7,27 @@
 	using FluentAssertions;
 	using NUnit.Framework;
 
+	public struct MyCustomStruct
+	{
+		public string Name;
+		public int Age;
+	}
+
+	public class Impl1
+	{
+		
+	}
+
+	public interface IContract1
+	{
+		string Name { get; set; }
+		int Age { get; set; }
+	}
+	public class Contract1Impl : IContract1
+	{
+		public string Name { get; set; }
+		public int Age { get; set; }
+	}
 
 	[RemoteService]
 	public interface IRemoteServ1
@@ -18,6 +39,10 @@
 		void JustParams(string p1);
 
 		string ParamsAndReturn(string p1);
+		
+		void ParamsWithStruct(MyCustomStruct p1);
+		void ParamsWithCustomType1(Impl1 p1);
+		void ParamsWithCustomType2(IContract1 p1);
 	}
 
 	public class RemoteServImpl : IRemoteServ1
@@ -31,14 +56,18 @@
 			return string.Empty;
 		}
 
-		public void JustParams(string p1)
-		{
-		}
+		public void JustParams(string p1) { }
 
 		public string ParamsAndReturn(string p1)
 		{
 			return string.Empty;
 		}
+
+		public void ParamsWithStruct(MyCustomStruct p1) { }
+
+		public void ParamsWithCustomType1(Impl1 p1) { }
+
+		public void ParamsWithCustomType2(IContract1 p1) { }
 	}
 
 	[TestFixture]
@@ -47,7 +76,7 @@
 		private WindsorContainer _containerClient;
 		private WindsorContainer _containerServer;
 
-		[SetUp]
+		[TestFixtureSetUp]
 		public void Init()
 		{
 			_containerClient = new WindsorContainer(new XmlInterpreter("config_client.config"));
@@ -57,7 +86,7 @@
 			_containerClient.Register(Component.For<IRemoteServ1>().ImplementedBy<RemoteServImpl>());
 		}
 
-		[TearDown]
+		[TestFixtureTearDown]
 		public void CleanUp()
 		{
 			if (_containerClient != null)
@@ -88,6 +117,27 @@
 			service.JustReturn().Should().Be("");
 		}
 		
+		[Test]
+		public void ParamsWithStruct()
+		{
+			var service = _containerClient.Resolve<IRemoteServ1>();
+			service.ParamsWithStruct(new MyCustomStruct() { Name = "1", Age = 30 });
+		}
+
+		[Test]
+		public void ParamsWithCustomType1()
+		{
+			var service = _containerClient.Resolve<IRemoteServ1>();
+			service.ParamsWithCustomType1(new Impl1() { });
+		}
+
+		[Test]
+		public void ParamsWithCustomType2()
+		{
+			var service = _containerClient.Resolve<IRemoteServ1>();
+			service.ParamsWithCustomType2(new Contract1Impl() { Name = "2", Age = 31 });
+		}
+
 		[Test]
 		public void ParamsAndReturnCall()
 		{

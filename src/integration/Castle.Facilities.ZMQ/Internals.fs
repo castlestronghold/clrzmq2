@@ -190,6 +190,7 @@ open Castle.Facilities.ZMQ
             if (model.Services |> Seq.exists (fun s -> s.IsDefined(typeof<RemoteServiceAttribute>, false))) then
                 this.add_interceptor(model)
 
+    [<AllowNullLiteralAttribute>]
     type Reaper(zContextAccessor:ZContextAccessor) =
         static let logger = log4net.LogManager.GetLogger(typeof<Reaper>)
 
@@ -201,7 +202,7 @@ open Castle.Facilities.ZMQ
 
                 pool.Dispose()
 
-                //zContextAccessor.Current.Dispose()
+                zContextAccessor.Current.Dispose()
 
                 logger.Info("Disposed ZeroMQ Facility.")
              with
