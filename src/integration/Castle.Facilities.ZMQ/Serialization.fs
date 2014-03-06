@@ -7,9 +7,15 @@ module Serialization
     open System.Runtime.Serialization
 
     let serialize_with_protobuf(instance: 'a) =
+        let watch = System.Diagnostics.Stopwatch()
+        watch.Start()
+
         use input = new MemoryStream()
         Serializer.Serialize(input, instance)
         input.Flush()
+
+        watch.Stop()
+        Console.Out.WriteLine ("serialize_with_protobuf {0} elapsed {1}", input.Length, watch.ElapsedTicks)
         input.ToArray()
 
     let deserialize_with_protobuf<'a> (bytes:byte array) : 'a =

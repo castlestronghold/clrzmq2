@@ -49,6 +49,9 @@ open Castle.Facilities.ZMQ
                                                     System.Convert.ToSingle(v) :> obj
                                                 elif pType = typeof<double> then
                                                     System.Convert.ToDouble(v) :> obj
+                                                elif pType = typeof<DateTime> then
+                                                    let long = Convert.ToInt64(v)
+                                                    DateTime(long) :> obj
                                                 else
                                                     v
                                             
