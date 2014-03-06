@@ -22,13 +22,41 @@ open Castle.Facilities.ZMQ
 
     type Dispatcher(kernel:IKernel) =
         member this.Invoke(target:string, methd:string, parms: obj array) = 
+            // TODO: costly op, needs cache
             let tgtType = Type.GetType(target)
 
             let instance = kernel.Resolve(tgtType)
 
+            // assumption: overload is not supported
             let methodBase = tgtType.GetMethod(methd) // tgtType.GetMethod(methd, parms |> Array.map (fun p -> p.GetType()))
 
-            methodBase.Invoke(instance, parms)
+            // ref / out params not supported
+            let args = 
+                if parms = null then null
+                else 
+                    let pDefs = 
+                        methodBase.GetParameters() 
+                        |> Seq.map (fun p -> p.ParameterType) 
+                        |> Seq.toArray
+                    parms 
+                    |> Seq.mapi (fun i v -> (   let pType = pDefs.[i]
+
+                                                if pType = typeof<decimal> then
+                                                    System.Convert.ToDecimal(v) :> obj
+                                                elif pType = typeof<int> then
+                                                    System.Convert.ToInt32(v) :> obj
+                                                elif pType = typeof<float > then
+                                                    System.Convert.ToSingle(v) :> obj
+                                                elif pType = typeof<double> then
+                                                    System.Convert.ToDouble(v) :> obj
+                                                else
+                                                    v
+                                            
+                                            )) 
+                    |> Seq.toArray
+
+
+            methodBase.Invoke(instance, args)
 
     type RemoteRequestListener(bindAddress:String, workers:Int16, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
         inherit BaseListener(zContextAccessor)
@@ -57,7 +85,9 @@ open Castle.Facilities.ZMQ
             let response = 
                             try
                                 let result = 
-                                    dispatcher.Invoke(request.TargetService, request.TargetMethod, request.MethodParams)
+                                    dispatcher.Invoke(request.TargetService, 
+                                                      request.TargetMethod, 
+                                                      request.MethodParams )
                                 
                                 ResponseMessage(result, null)
                             with
@@ -127,10 +157,46 @@ open Castle.Facilities.ZMQ
                     if invocation.TargetType <> null then
                         invocation.Proceed()
                     else
-                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, invocation.Arguments)
+                        let originalArgs = invocation.Arguments
+                        (*
+                        let tuples = 
+                            invocation.Method.GetParameters()
+                            // |> Seq.mapi (fun i t -> new Tuple<string,obj>(t.ParameterType.Name, originalArgs.[i]) )
+                            |> Seq.mapi (fun i t -> if t = null then null else if t.ParameterType.IsPrimitive then t.ToString() else )
+                            |> Seq.toArray
+
+                        let args =
+                            if tuples.Length = 0 then null else tuples
+                        *)
+                        let args = 
+                            invocation.Method.GetParameters()
+                            |> Seq.mapi (fun i t -> if originalArgs.[i] = null then 
+                                                        null 
+                                                    else 
+                                                        
+                                                        let pType = t.ParameterType
+
+                                                        if pType = typeof<decimal> then
+                                                            originalArgs.[i].ToString() :> obj
+                                                        elif pType = typeof<int> then
+                                                            originalArgs.[i].ToString() :> obj
+                                                        elif pType = typeof<float> then
+                                                            originalArgs.[i].ToString() :> obj
+                                                        elif pType = typeof<double> then
+                                                            originalArgs.[i].ToString() :> obj
+                                                        elif pType = typeof<DateTime> then
+                                                            let dt = (originalArgs.[i] :?> DateTime).Ticks
+                                                            dt.ToString() :> obj
+                                                        else
+                                                            originalArgs.[i]
+                                        )
+                            |> Seq.toArray
+
+                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, args)
                         let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
 
-                        let response = RemoteRequest(zContextAccessor, request, endpoint).Get()
+                        let request = RemoteRequest(zContextAccessor, request, endpoint)
+                        let response = request.Get()
 
                         if response.ExceptionThrown <> null then
                             raise response.ExceptionThrown

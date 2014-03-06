@@ -55,7 +55,7 @@
 				service.ParamsWithStruct(new MyCustomStruct() { Name = "1", Age = 30 });
 				service.ParamsWithCustomType1(new Impl1() { });
 				service.ParamsWithCustomType2(new Contract1Impl() { Name = "2", Age = 31 });
-//				service.ParamsAndReturn("", 1, DateTime.Now, 102.2m);
+				service.ParamsAndReturn("", 1, DateTime.Now, 102.2m);
 			}
 
 		}

@@ -27,6 +27,8 @@ type RequestMessage(service:string, methd:string, parms:obj array) =
         with get() = methodParams
         and set(value) = methodParams <- value
 
+
+
 [<Serializable; AllowNullLiteralAttribute>]
 [<ProtoContract>]
 type ResponseMessage(ret:obj, excp:Exception) =
