@@ -80,10 +80,14 @@
 				Assert.IsInstanceOf(typeof(Derived2), b);
 				Assert.AreEqual(10, (b as Derived2).Something);
 				Assert.AreEqual("test", (b as Derived2).DerivedProp2);
+ 
+				var enu = service.UsingEnumerators();
+				Assert.IsNotNull(enu);
+				Assert.AreEqual(2, enu.Count());
 
-//				var enu = service.UsingEnumerators();
-//				Assert.IsNotNull(enu);
-//				Assert.AreEqual(2, enu.Count());
+				var array = service.UsingArray();
+				Assert.IsNotNull(array);
+				Assert.AreEqual(2, array.Length);
 			}
 
 			watch.Stop();
@@ -148,6 +152,7 @@
 		Base WithInheritanceRet();
 
 		IEnumerable<Derived1> UsingEnumerators();
+		Derived1[] UsingArray();
 
 		void DoSomethingWrong();
 	}
@@ -233,6 +238,11 @@
 		}
 
 		public IEnumerable<Derived1> UsingEnumerators()
+		{
+			return new[] { new Derived1() { Something = 10 }, new Derived1() { Something = 11 }, };
+		}
+
+		public Derived1[] UsingArray()
 		{
 			return new[] { new Derived1() { Something = 10 }, new Derived1() { Something = 11 }, };
 		}

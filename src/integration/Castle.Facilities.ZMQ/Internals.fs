@@ -75,7 +75,11 @@ open Castle.Facilities.ZMQ
                                         request.TargetMethod, 
                                         request.MethodParams )
                                 
-                response <- ResponseMessage(result, null)
+                if is_collection (result) then
+                    let arrayRes = to_array result
+                    response <- ResponseMessage(null, null, ReturnValueArray = arrayRes)
+                else 
+                    response <- ResponseMessage(result, null)
             with
                 | :? TargetInvocationException as ex ->
                     let e = ex.InnerException 
@@ -162,7 +166,19 @@ open Castle.Facilities.ZMQ
                             raise (new Exception(msg))
 
                         if invocation.Method.ReturnType <> typeof<Void> then
-                            invocation.ReturnValue <- response.ReturnValue
+                            invocation.ReturnValue <- 
+                                if response.ReturnValue <> null 
+                                then response.ReturnValue
+                                else 
+                                    if response.ReturnValueArray <> null then
+                                        if invocation.Method.ReturnType.IsArray then
+                                            let arrayElemType = invocation.Method.ReturnType.GetElementType()
+                                            (make_strongly_typed_array arrayElemType (response.ReturnValueArray)) :> obj
+                                        else
+                                            let itemType = invocation.Method.ReturnType.GetGenericArguments().[0]
+                                            (make_strongly_typed_enumerable itemType (response.ReturnValueArray))
+                                    else null
+                                    
                 finally
                     if logger.IsDebugEnabled then
                         logger.Debug("Intercept took " + (stopwatch.ElapsedMilliseconds.ToString()))
