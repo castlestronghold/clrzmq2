@@ -8,6 +8,7 @@ open System.IO
 open System.Diagnostics
 open System.Reflection
 open System.Collections.Generic
+open System.Collections.Concurrent
 open System.Threading
 open Castle.Core
 open Castle.Core.Configuration
@@ -22,50 +23,28 @@ open Castle.Facilities.ZMQ
 open ZMQ.Counters
 open System.Runtime.Remoting.Messaging
 
-    [<Serializable>]
-    type RequestMessage(service:string, methd:string, parms:obj array) =
-        let mutable targetService:string = service
-        let mutable targetMethod:string = methd
-        let mutable methodParams = parms
-        
-        new () = RequestMessage(null, null, null)
-
-        member this.TargetService
-         with get() = targetService
-         and set(value) = targetService <- value
-
-        member this.TargetMethod
-         with get() = targetMethod
-         and set(value) = targetMethod <- value
-
-        member this.MethodParams
-         with get() = methodParams
-         and set(value) = methodParams <- value
-
-    [<Serializable>]
-    type ResponseMessage(ret:byte array, excp:Exception) =
-        let mutable returnValue = ret
-        let mutable exceptionThrown = excp
-
-        new () = ResponseMessage(null, null)
-
-        member this.ReturnValue
-         with get() = returnValue
-         and set(value) = returnValue <- value
-
-        member this.ExceptionThrown
-         with get() = exceptionThrown
-         and set(value) = exceptionThrown <- value
 
     type Dispatcher(kernel:IKernel) =
+        let _typename2Type = ConcurrentDictionary<string,Type>(StringComparer.Ordinal)
+
         member this.Invoke(target:string, methd:string, parms: obj array) = 
-            let tgtType = Type.GetType(target)
+            let resolvedType = 
+                let res, t = _typename2Type.TryGetValue target
+                if not res then
+                    let tgtType = Type.GetType(target)
+                    _typename2Type.TryAdd (target, tgtType) |> ignore
+                    tgtType
+                else t
+                
+            let instance = kernel.Resolve(resolvedType)
 
-            let instance = kernel.Resolve(tgtType)
+            // assumption: overload is not supported
+            let methodBase = 
+                resolvedType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public)
 
-            let methodBase = tgtType.GetMethod(methd, parms |> Array.map (fun p -> p.GetType()))
+            let args = deserialize_params parms (methodBase.GetParameters())
 
-            (methodBase.ReturnType <> typeof<Void>, methodBase.Invoke(instance, parms))
+            methodBase.Invoke(instance, args)
 
     type RemoteRequestListener(bindAddress:String, workers:Int16, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
         inherit BaseListener(zContextAccessor)
@@ -89,19 +68,34 @@ open System.Runtime.Remoting.Messaging
         override this.GetConfig() = config.Force()
 
         override this.GetReplyFor(message, socket) = 
-            let request = deserialize_with_netbinary<RequestMessage>(message);
+            let mutable response : ResponseMessage = null
+             
+            try
+                let request = deserialize_with_protobuf<RequestMessage>(message);
 
-            let response = 
-                            try
-                                let nonVoid, result = dispatcher.Invoke(request.TargetService, request.TargetMethod, request.MethodParams)
+                let result = 
+                    dispatcher.Invoke(request.TargetService, 
+                                        request.TargetMethod, 
+                                        request.MethodParams )
                                 
-                                //TODO: Add suport for more formatters
-                                ResponseMessage(serialize_with_netbinary(result), null)
-                            with
-                                | :? TargetInvocationException as ex -> ResponseMessage(null, ex.InnerException)
-                                | ex -> ResponseMessage(null, ex)
+                if is_collection (result) then
+                    let arrayRes = to_array result
+                    response <- ResponseMessage(null, null, ReturnValueArray = arrayRes)
+                else 
+                    response <- ResponseMessage(result, null)
+            with
+                | :? TargetInvocationException as ex ->
+                    let e = ex.InnerException 
+                    response <- ResponseMessage(null, ExceptionInfo(e.GetType().Name, e.Message) )
+                | ex -> 
+                    response <- ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message))
 
-            serialize_with_netbinary(response)
+            try
+                let buffer = serialize_with_protobuf(response)
+                buffer
+            with
+                | ex -> 
+                    serialize_with_protobuf ( ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message)) )
 
         interface IStartable with
             override this.Start() = 
@@ -140,8 +134,8 @@ open System.Runtime.Remoting.Messaging
 
             watch.Start()
 
-            socket.Send(serialize_with_netbinary(message))
-
+	    socket.Send(serialize_with_protobuf(message))
+	    
             sentCounter.Increment() |> ignore
 
             let bytes = socket.Recv(ZSocket.InfiniteTimeout)
@@ -154,7 +148,7 @@ open System.Runtime.Remoting.Messaging
                 elapsedCounter.IncrementBy(watch.ElapsedTicks) |> ignore
                 baseElapsedCounter.Increment() |> ignore
 
-            deserialize_with_netbinary<ResponseMessage>(bytes)
+	    deserialize_with_protobuf<ResponseMessage>(bytes)
 
     type RemoteRouter() =
         let routes = Dictionary<string, string>()
@@ -182,6 +176,7 @@ open System.Runtime.Remoting.Messaging
         static member For(r: string) =
             (new AlternativeRouteContext(r)) :> IDisposable
 
+
     type RemoteRequestInterceptor(zContextAccessor:ZContextAccessor, router:RemoteRouter) =
         static let logger = log4net.LogManager.GetLogger(typeof<RemoteRequestInterceptor>)
 
@@ -197,22 +192,38 @@ open System.Runtime.Remoting.Messaging
                     if invocation.TargetType <> null then
                         invocation.Proceed()
                     else
-                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, invocation.Arguments)
+                        let args = 
+                            serialize_parameters (invocation.Arguments) (invocation.Method.GetParameters())
+
+                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, args)
                         let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
 
-                        let response = RemoteRequest(zContextAccessor, request, endpoint).Get()
+                        let request = RemoteRequest(zContextAccessor, request, endpoint)
+                        let response = request.Get()
 
-                        if response.ExceptionThrown <> null then
-                            raise response.ExceptionThrown
+                        if response.ExceptionInfo <> null then
+                            let msg = sprintf "Remote server threw %s with message %s" (response.ExceptionInfo.Typename) (response.ExceptionInfo.Message)
+                            raise (new Exception(msg))
 
                         if invocation.Method.ReturnType <> typeof<Void> then
-                            invocation.ReturnValue <- deserialize_with_netbinary<obj>(response.ReturnValue)
+                            invocation.ReturnValue <- 
+                                if response.ReturnValue <> null 
+                                then response.ReturnValue
+                                else 
+                                    if response.ReturnValueArray <> null then
+                                        if invocation.Method.ReturnType.IsArray then
+                                            let arrayElemType = invocation.Method.ReturnType.GetElementType()
+                                            (make_strongly_typed_array arrayElemType (response.ReturnValueArray)) :> obj
+                                        else
+                                            let itemType = invocation.Method.ReturnType.GetGenericArguments().[0]
+                                            (make_strongly_typed_enumerable itemType (response.ReturnValueArray))
+                                    else null
+                                    
                 finally
                     if logger.IsDebugEnabled then
                         logger.Debug("Intercept took " + (stopwatch.ElapsedMilliseconds.ToString()))
                     
         interface IOnBehalfAware with
-
             member this.SetInterceptedComponentModel(target) = ()
 
     type RemoteRequestInspector() =
@@ -228,6 +239,7 @@ open System.Runtime.Remoting.Messaging
             if (model.Services |> Seq.exists (fun s -> s.IsDefined(typeof<RemoteServiceAttribute>, false))) then
                 this.add_interceptor(model)
 
+    [<AllowNullLiteralAttribute>]
     type Reaper(zContextAccessor:ZContextAccessor) =
         static let logger = log4net.LogManager.GetLogger(typeof<Reaper>)
 
@@ -239,7 +251,7 @@ open System.Runtime.Remoting.Messaging
 
                 pool.Dispose()
 
-                //zContextAccessor.Current.Dispose()
+                zContextAccessor.Current.Dispose()
 
                 logger.Info("Disposed ZeroMQ Facility.")
              with

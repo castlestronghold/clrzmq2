@@ -10,6 +10,8 @@ open Castle.Facilities.ZMQ.Internals
     type ZeroMQFacility() =
         inherit AbstractFacility()
 
+        let _reaper : Ref<Reaper> = ref null
+
         member this.setup_server() =
             let workers = if base.FacilityConfig.Attributes.["workers"] = null then 3 else Convert.ToInt32(base.FacilityConfig.Attributes.["workers"])
 
@@ -37,7 +39,8 @@ open Castle.Facilities.ZMQ.Internals
 
             let isServer = not (String.IsNullOrEmpty(base.FacilityConfig.Attributes.["listen"]))
 
-            base.Kernel.ComponentModelBuilder.AddContributor(new RemoteRequestInspector())
+            if not isServer then
+                base.Kernel.ComponentModelBuilder.AddContributor(new RemoteRequestInspector())
 
             if isServer then
                 this.setup_server()
@@ -45,4 +48,8 @@ open Castle.Facilities.ZMQ.Internals
             if base.FacilityConfig.Children.["endpoints"] <> null then
                 this.setup_client()
 
-            base.Kernel.Register(Component.For<Reaper>()).Resolve<Reaper>() |> ignore
+            _reaper := base.Kernel.Register(Component.For<Reaper>()).Resolve<Reaper>() 
+        
+        override this.Dispose() = 
+            if !_reaper <> null then 
+                (!_reaper :> IDisposable).Dispose();

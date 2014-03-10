@@ -20,10 +20,11 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>bin\WIN_RELEASE\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Debug\Castle.Facilities.ZMQ.XML</DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -72,6 +73,7 @@
   <ItemGroup>
     <Compile Include="Serialization.fs" />
     <Compile Include="Attributes.fs" />
+    <Compile Include="Model.fs" />
     <Compile Include="Internals.fs" />
     <Compile Include="Api.fs" />
     <None Include="packages.config" />
