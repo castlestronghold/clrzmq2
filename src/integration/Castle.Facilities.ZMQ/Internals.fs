@@ -7,6 +7,7 @@ open System
 open System.IO
 open System.Reflection
 open System.Collections.Generic
+open System.Collections.Concurrent
 open System.Threading
 open Castle.Core
 open Castle.Core.Configuration
@@ -21,43 +22,26 @@ open Castle.Facilities.ZMQ
 
 
     type Dispatcher(kernel:IKernel) =
-        member this.Invoke(target:string, methd:string, parms: obj array) = 
-            // TODO: costly op, needs cache
-            let tgtType = Type.GetType(target)
+        let _typename2Type = ConcurrentDictionary<string,Type>(StringComparer.Ordinal)
 
-            let instance = kernel.Resolve(tgtType)
+        member this.Invoke(target:string, methd:string, parms: obj array) = 
+            
+            let resolvedType = 
+                let res, t = _typename2Type.TryGetValue target
+                if not res then
+                    let tgtType = Type.GetType(target)
+                    _typename2Type.TryAdd (target, tgtType) |> ignore
+                    tgtType
+                else t
+                
+
+            let instance = kernel.Resolve(resolvedType)
 
             // assumption: overload is not supported
-            let methodBase = tgtType.GetMethod(methd) // tgtType.GetMethod(methd, parms |> Array.map (fun p -> p.GetType()))
+            let methodBase = 
+                resolvedType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public)
 
-            // ref / out params not supported
-            let args = 
-                if parms = null then null
-                else 
-                    let pDefs = 
-                        methodBase.GetParameters() 
-                        |> Seq.map (fun p -> p.ParameterType) 
-                        |> Seq.toArray
-                    parms 
-                    |> Seq.mapi (fun i v -> (   let pType = pDefs.[i]
-
-                                                if pType = typeof<decimal> then
-                                                    System.Convert.ToDecimal(v) :> obj
-                                                elif pType = typeof<int> then
-                                                    System.Convert.ToInt32(v) :> obj
-                                                elif pType = typeof<float > then
-                                                    System.Convert.ToSingle(v) :> obj
-                                                elif pType = typeof<double> then
-                                                    System.Convert.ToDouble(v) :> obj
-                                                elif pType = typeof<DateTime> then
-                                                    let long = Convert.ToInt64(v)
-                                                    DateTime(long) :> obj
-                                                else
-                                                    v
-                                            
-                                            )) 
-                    |> Seq.toArray
-
+            let args = deserialize_params parms (methodBase.GetParameters())
 
             methodBase.Invoke(instance, args)
 
@@ -97,8 +81,12 @@ open Castle.Facilities.ZMQ
                                 | :? TargetInvocationException as ex -> ResponseMessage(null, ex.InnerException)
                                 | ex -> ResponseMessage(null, ex)
 
-            let buffer = serialize_with_protobuf(response)
-            buffer
+            try
+                let buffer = serialize_with_protobuf(response)
+                buffer
+            with
+                | ex -> 
+                    serialize_with_protobuf ( ResponseMessage(null, ex) )
 
         interface IStartable with
             override this.Start() = 
@@ -129,9 +117,7 @@ open Castle.Facilities.ZMQ
 
         override this.InternalGet(socket) =
             socket.Send(serialize_with_protobuf(message))
-
             let bytes = socket.Recv(ZSocket.InfiniteTimeout)
-
             deserialize_with_protobuf<ResponseMessage>(bytes)
 
     type RemoteRouter() =
@@ -160,40 +146,8 @@ open Castle.Facilities.ZMQ
                     if invocation.TargetType <> null then
                         invocation.Proceed()
                     else
-                        let originalArgs = invocation.Arguments
-                        (*
-                        let tuples = 
-                            invocation.Method.GetParameters()
-                            // |> Seq.mapi (fun i t -> new Tuple<string,obj>(t.ParameterType.Name, originalArgs.[i]) )
-                            |> Seq.mapi (fun i t -> if t = null then null else if t.ParameterType.IsPrimitive then t.ToString() else )
-                            |> Seq.toArray
-
-                        let args =
-                            if tuples.Length = 0 then null else tuples
-                        *)
                         let args = 
-                            invocation.Method.GetParameters()
-                            |> Seq.mapi (fun i t -> if originalArgs.[i] = null then 
-                                                        null 
-                                                    else 
-                                                        
-                                                        let pType = t.ParameterType
-
-                                                        if pType = typeof<decimal> then
-                                                            originalArgs.[i].ToString() :> obj
-                                                        elif pType = typeof<int> then
-                                                            originalArgs.[i].ToString() :> obj
-                                                        elif pType = typeof<float> then
-                                                            originalArgs.[i].ToString() :> obj
-                                                        elif pType = typeof<double> then
-                                                            originalArgs.[i].ToString() :> obj
-                                                        elif pType = typeof<DateTime> then
-                                                            let dt = (originalArgs.[i] :?> DateTime).Ticks
-                                                            dt.ToString() :> obj
-                                                        else
-                                                            originalArgs.[i]
-                                        )
-                            |> Seq.toArray
+                            serialize_parameters (invocation.Arguments) (invocation.Method.GetParameters())
 
                         let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, args)
                         let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)

@@ -45,9 +45,12 @@
 
 		private static void InvokeBatch(IRemoteServ1 service)
 		{
-			for (var i = 0; i < 10; i++)
+			var watch = new System.Diagnostics.Stopwatch();
+			watch.Start();
+
+			for (var i = 0; i < 1000; i++)
 			{
-				Console.WriteLine("new batch ");
+				// Console.WriteLine("new batch ");
 
 				service.NoParamsOrReturn();
 				service.JustParams("1");
@@ -55,9 +58,19 @@
 				service.ParamsWithStruct(new MyCustomStruct() { Name = "1", Age = 30 });
 				service.ParamsWithCustomType1(new Impl1() { });
 				service.ParamsWithCustomType2(new Contract1Impl() { Name = "2", Age = 31 });
-				service.ParamsAndReturn("", 1, DateTime.Now, 102.2m);
+				service.ParamsAndReturn("", 1, DateTime.Now, 102.2m, FileAccess.ReadWrite, 1, 2, 3.0f, 4.0);
+				service.WithInheritanceParam(new Derived1() { Something = 10, DerivedProp1 = 20});
+				
+				var b = service.WithInheritanceRet();
+				Assert.IsNotNull(b);
+				Assert.IsInstanceOf(typeof(Derived2), b);
+				Assert.AreEqual(10, (b as Derived2).Something);
+				Assert.AreEqual("test", (b as Derived2).DerivedProp2);
 			}
 
+			watch.Stop();
+
+			Console.WriteLine("took " + watch.ElapsedMilliseconds);
 		}
 
 		public void CleanUp()
@@ -107,12 +120,46 @@
 
 		void JustParams(string p1);
 
-		string ParamsAndReturn(string p1, int p2, DateTime dt, decimal p4);
+		string ParamsAndReturn(string p1, int p2, DateTime dt, decimal p4, FileAccess acc, short s1, byte b1, float f1, double d1);
 
 		void ParamsWithStruct(MyCustomStruct p1);
 		void ParamsWithCustomType1(Impl1 p1);
 		void ParamsWithCustomType2(IContract1 p1);
+
+		void WithInheritanceParam(Base b);
+		Base WithInheritanceRet();
 	}
+
+	[ProtoContract]
+	[ProtoInclude(1, typeof(Derived1))]
+	[ProtoInclude(2, typeof(Derived2))]
+	public class Base
+	{
+		[ProtoMember(10)]
+		public int Something { get; set; }
+	}
+	[ProtoContract]
+	public class Derived1 : Base
+	{
+		[ProtoMember(20)]
+		public int DerivedProp1 { get; set; }
+	}
+	[ProtoContract]
+	public class Derived2 : Base
+	{
+		[ProtoMember(30)]
+		public string DerivedProp2 { get; set; }
+	}
+
+	[ProtoContract]
+	public class Contract2Impl : IContract1
+	{
+		[ProtoMember(1)]
+		public string Name { get; set; }
+		[ProtoMember(2)]
+		public int Age { get; set; }
+	}
+
 
 	public class RemoteServImpl : IRemoteServ1
 	{
@@ -130,7 +177,7 @@
 			Assert.IsNotNull(p1);
 		}
 
-		public string ParamsAndReturn(string p1, int p2, DateTime dt, decimal p4)
+		public string ParamsAndReturn(string p1, int p2, DateTime dt, decimal p4, FileAccess acc, short s1, byte b1, float f1, double d1)
 		{
 			return string.Empty;
 		}
@@ -148,6 +195,19 @@
 		public void ParamsWithCustomType2(IContract1 p1)
 		{
 			Assert.IsNotNull(p1);
+		}
+
+		public void WithInheritanceParam(Base b)
+		{
+			Assert.IsNotNull(b);
+		}
+
+		public Base WithInheritanceRet()
+		{
+			return new Derived2()
+			{
+				Something = 10, DerivedProp2 = "test"
+			};
 		}
 	}
 }
