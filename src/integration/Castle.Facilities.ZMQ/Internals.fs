@@ -134,8 +134,8 @@ open System.Runtime.Remoting.Messaging
 
             watch.Start()
 
-	    socket.Send(serialize_with_protobuf(message))
-	    
+            socket.Send(serialize_with_protobuf(message))
+    
             sentCounter.Increment() |> ignore
 
             let bytes = socket.Recv(ZSocket.InfiniteTimeout)
@@ -148,7 +148,7 @@ open System.Runtime.Remoting.Messaging
                 elapsedCounter.IncrementBy(watch.ElapsedTicks) |> ignore
                 baseElapsedCounter.Increment() |> ignore
 
-	    deserialize_with_protobuf<ResponseMessage>(bytes)
+            deserialize_with_protobuf<ResponseMessage>(bytes)
 
     type RemoteRouter() =
         let routes = Dictionary<string, string>()
