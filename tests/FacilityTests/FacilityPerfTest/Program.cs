@@ -1,7 +1,10 @@
 ﻿namespace FacilityPerfTest
 {
 	using System;
+	using System.Collections;
+	using System.Collections.Generic;
 	using System.IO;
+	using System.Linq;
 	using Castle.Facilities.ZMQ;
 	using Castle.Facilities.ZMQ.Internals;
 	using Castle.MicroKernel.Registration;
@@ -48,24 +51,39 @@
 			var watch = new System.Diagnostics.Stopwatch();
 			watch.Start();
 
+//			try
+//			{
+//				service.DoSomethingWrong();
+//				Assert.Fail("Expecting exception here");
+//			}
+//			catch (Exception ex)
+//			{
+//				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
+//			}
+
+
 			for (var i = 0; i < 1000; i++)
 			{
 				// Console.WriteLine("new batch ");
 
-				service.NoParamsOrReturn();
-				service.JustParams("1");
-				service.JustReturn().Equals("abc");
-				service.ParamsWithStruct(new MyCustomStruct() { Name = "1", Age = 30 });
-				service.ParamsWithCustomType1(new Impl1() { });
-				service.ParamsWithCustomType2(new Contract1Impl() { Name = "2", Age = 31 });
-				service.ParamsAndReturn(Guid.NewGuid(), "", 1, DateTime.Now, 102.2m, FileAccess.ReadWrite, 1, 2, 3.0f, 4.0);
-				service.WithInheritanceParam(new Derived1() { Something = 10, DerivedProp1 = 20});
-				
-				var b = service.WithInheritanceRet();
-				Assert.IsNotNull(b);
-				Assert.IsInstanceOf(typeof(Derived2), b);
-				Assert.AreEqual(10, (b as Derived2).Something);
-				Assert.AreEqual("test", (b as Derived2).DerivedProp2);
+//				service.NoParamsOrReturn();
+//				service.JustParams("1");
+//				service.JustReturn().Equals("abc");
+//				service.ParamsWithStruct(new MyCustomStruct() { Name = "1", Age = 30 });
+//				service.ParamsWithCustomType1(new Impl1() { });
+//				service.ParamsWithCustomType2(new Contract1Impl() { Name = "2", Age = 31 });
+//				service.ParamsAndReturn(Guid.NewGuid(), "", 1, DateTime.Now, 102.2m, FileAccess.ReadWrite, 1, 2, 3.0f, 4.0);
+//				service.WithInheritanceParam(new Derived1() { Something = 10, DerivedProp1 = 20});
+//				
+//				var b = service.WithInheritanceRet();
+//				Assert.IsNotNull(b);
+//				Assert.IsInstanceOf(typeof(Derived2), b);
+//				Assert.AreEqual(10, (b as Derived2).Something);
+//				Assert.AreEqual("test", (b as Derived2).DerivedProp2);
+
+				var enu = service.UsingEnumerators();
+				Assert.IsNotNull(enu);
+				Assert.AreEqual(2, enu.Count());
 			}
 
 			watch.Stop();
@@ -128,6 +146,10 @@
 
 		void WithInheritanceParam(Base b);
 		Base WithInheritanceRet();
+
+		IEnumerable<Derived1> UsingEnumerators();
+
+		void DoSomethingWrong();
 	}
 
 	[ProtoContract]
@@ -208,6 +230,16 @@
 			{
 				Something = 10, DerivedProp2 = "test"
 			};
+		}
+
+		public IEnumerable<Derived1> UsingEnumerators()
+		{
+			return new[] { new Derived1() { Something = 10 }, new Derived1() { Something = 11 }, };
+		}
+
+		public void DoSomethingWrong()
+		{
+			throw new Exception("simple message");
 		}
 	}
 }

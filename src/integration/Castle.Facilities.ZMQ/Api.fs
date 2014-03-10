@@ -39,7 +39,8 @@ open Castle.Facilities.ZMQ.Internals
 
             let isServer = not (String.IsNullOrEmpty(base.FacilityConfig.Attributes.["listen"]))
 
-            base.Kernel.ComponentModelBuilder.AddContributor(new RemoteRequestInspector())
+            if not isServer then
+                base.Kernel.ComponentModelBuilder.AddContributor(new RemoteRequestInspector())
 
             if isServer then
                 this.setup_server()

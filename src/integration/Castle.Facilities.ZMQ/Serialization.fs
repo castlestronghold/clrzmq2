@@ -97,16 +97,22 @@ module Serialization
 
 
     let serialize_with_protobuf(instance: 'a) =
-        // let watch = System.Diagnostics.Stopwatch()
-        // watch.Start()
+        try
+            // let watch = System.Diagnostics.Stopwatch()
+            // watch.Start()
+            use input = new MemoryStream()
+            Serializer.Serialize(input, instance)
+            input.Flush()
 
-        use input = new MemoryStream()
-        Serializer.Serialize(input, instance)
-        input.Flush()
+            // watch.Stop()
+            // Console.Out.WriteLine ("serialize_with_protobuf {0} elapsed {1}", input.Length, watch.ElapsedTicks)
+            input.ToArray()
 
-        // watch.Stop()
-        // Console.Out.WriteLine ("serialize_with_protobuf {0} elapsed {1}", input.Length, watch.ElapsedTicks)
-        input.ToArray()
+        with 
+            | ex  -> 
+                Console.WriteLine( ex)
+                reraise()
+
 
     let deserialize_with_protobuf<'a> (bytes:byte array) : 'a =
         use input = new MemoryStream(bytes)

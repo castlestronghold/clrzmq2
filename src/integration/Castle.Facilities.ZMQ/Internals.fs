@@ -67,26 +67,30 @@ open Castle.Facilities.ZMQ
         override this.GetConfig() = config.Force()
 
         override this.GetReplyFor(message, socket) = 
-            let request = deserialize_with_protobuf<RequestMessage>(message);
+            let mutable response : ResponseMessage = null
+             
+            try
+                let request = deserialize_with_protobuf<RequestMessage>(message);
 
-            let response = 
-                            try
-                                let result = 
-                                    dispatcher.Invoke(request.TargetService, 
-                                                      request.TargetMethod, 
-                                                      request.MethodParams )
+                let result = 
+                    dispatcher.Invoke(request.TargetService, 
+                                        request.TargetMethod, 
+                                        request.MethodParams )
                                 
-                                ResponseMessage(result, null)
-                            with
-                                | :? TargetInvocationException as ex -> ResponseMessage(null, ex.InnerException)
-                                | ex -> ResponseMessage(null, ex)
+                response <- ResponseMessage(result, null)
+            with
+                | :? TargetInvocationException as ex ->
+                    let e = ex.InnerException 
+                    response <- ResponseMessage(null, ExceptionInfo(e.GetType().Name, e.Message) )
+                | ex -> 
+                    response <- ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message))
 
             try
                 let buffer = serialize_with_protobuf(response)
                 buffer
             with
                 | ex -> 
-                    serialize_with_protobuf ( ResponseMessage(null, ex) )
+                    serialize_with_protobuf ( ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message)) )
 
         interface IStartable with
             override this.Start() = 
@@ -155,8 +159,9 @@ open Castle.Facilities.ZMQ
                         let request = RemoteRequest(zContextAccessor, request, endpoint)
                         let response = request.Get()
 
-                        if response.ExceptionThrown <> null then
-                            raise response.ExceptionThrown
+                        if response.ExceptionInfo <> null then
+                            let msg = sprintf "Remote server threw %s with message %s" (response.ExceptionInfo.Typename) (response.ExceptionInfo.Message)
+                            raise (new Exception(msg))
 
                         if invocation.Method.ReturnType <> typeof<Void> then
                             invocation.ReturnValue <- response.ReturnValue
