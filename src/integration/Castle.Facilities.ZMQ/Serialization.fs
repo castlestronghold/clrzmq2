@@ -39,6 +39,8 @@ module Serialization
                                             System.Convert.ToInt32( originalArgs.[i] ).ToString() :> obj
 
                                         // Structs
+                                        elif pType = typeof<Guid> then
+                                            originalArgs.[i].ToString() :> obj
                                         elif pType = typeof<DateTime> then
                                             let dt = (originalArgs.[i] :?> DateTime).Ticks
                                             dt.ToString() :> obj
@@ -80,6 +82,9 @@ module Serialization
                                         
                                         elif pType = typeof<double> then
                                             System.Convert.ToDouble(v) :> obj
+
+                                        elif pType = typeof<Guid> then
+                                            Guid.Parse(v.ToString()) :> obj
 
                                         elif pType = typeof<DateTime> then
                                             let long = Convert.ToInt64(v)

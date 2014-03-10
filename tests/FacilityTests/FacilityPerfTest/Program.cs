@@ -58,7 +58,7 @@
 				service.ParamsWithStruct(new MyCustomStruct() { Name = "1", Age = 30 });
 				service.ParamsWithCustomType1(new Impl1() { });
 				service.ParamsWithCustomType2(new Contract1Impl() { Name = "2", Age = 31 });
-				service.ParamsAndReturn("", 1, DateTime.Now, 102.2m, FileAccess.ReadWrite, 1, 2, 3.0f, 4.0);
+				service.ParamsAndReturn(Guid.NewGuid(), "", 1, DateTime.Now, 102.2m, FileAccess.ReadWrite, 1, 2, 3.0f, 4.0);
 				service.WithInheritanceParam(new Derived1() { Something = 10, DerivedProp1 = 20});
 				
 				var b = service.WithInheritanceRet();
@@ -120,7 +120,7 @@
 
 		void JustParams(string p1);
 
-		string ParamsAndReturn(string p1, int p2, DateTime dt, decimal p4, FileAccess acc, short s1, byte b1, float f1, double d1);
+		string ParamsAndReturn(Guid id, string p1, int p2, DateTime dt, decimal p4, FileAccess acc, short s1, byte b1, float f1, double d1);
 
 		void ParamsWithStruct(MyCustomStruct p1);
 		void ParamsWithCustomType1(Impl1 p1);
@@ -177,7 +177,7 @@
 			Assert.IsNotNull(p1);
 		}
 
-		public string ParamsAndReturn(string p1, int p2, DateTime dt, decimal p4, FileAccess acc, short s1, byte b1, float f1, double d1)
+		public string ParamsAndReturn(Guid id, string p1, int p2, DateTime dt, decimal p4, FileAccess acc, short s1, byte b1, float f1, double d1)
 		{
 			return string.Empty;
 		}
