@@ -33,13 +33,9 @@
 	public interface IRemoteServ1
 	{
 		void NoParamsOrReturn();
-
 		string JustReturn();
-
 		void JustParams(string p1);
-
 		string ParamsAndReturn(string p1);
-		
 		void ParamsWithStruct(MyCustomStruct p1);
 		void ParamsWithCustomType1(Impl1 p1);
 		void ParamsWithCustomType2(IContract1 p1);
@@ -53,14 +49,14 @@
 
 		public string JustReturn()
 		{
-			return string.Empty;
+			return "abc";
 		}
 
 		public void JustParams(string p1) { }
 
 		public string ParamsAndReturn(string p1)
 		{
-			return string.Empty;
+			return "123";
 		}
 
 		public void ParamsWithStruct(MyCustomStruct p1) { }
@@ -83,7 +79,7 @@
 			_containerServer = new WindsorContainer(new XmlInterpreter("config_server.config"));
 			
 			_containerServer.Register(Component.For<IRemoteServ1>().ImplementedBy<RemoteServImpl>());
-			_containerClient.Register(Component.For<IRemoteServ1>().ImplementedBy<RemoteServImpl>());
+			_containerClient.Register(Component.For<IRemoteServ1>());
 		}
 
 		[TestFixtureTearDown]
@@ -114,7 +110,7 @@
 		public void JustReturnCall()
 		{
 			var service = _containerClient.Resolve<IRemoteServ1>();
-			service.JustReturn().Should().Be("");
+			service.JustReturn().Should().Be("abc");
 		}
 		
 		[Test]
@@ -142,7 +138,7 @@
 		public void ParamsAndReturnCall()
 		{
 			var service = _containerClient.Resolve<IRemoteServ1>();
-			service.ParamsAndReturn("").Should().Be("");
+			service.ParamsAndReturn("").Should().Be("123");
 		}
 	}
 }
