@@ -25,7 +25,6 @@ open Castle.Facilities.ZMQ
         let _typename2Type = ConcurrentDictionary<string,Type>(StringComparer.Ordinal)
 
         member this.Invoke(target:string, methd:string, parms: obj array) = 
-            
             let resolvedType = 
                 let res, t = _typename2Type.TryGetValue target
                 if not res then
@@ -34,7 +33,6 @@ open Castle.Facilities.ZMQ
                     tgtType
                 else t
                 
-
             let instance = kernel.Resolve(resolvedType)
 
             // assumption: overload is not supported

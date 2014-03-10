@@ -17,7 +17,11 @@ module Serialization
                                         let pType = t.ParameterType
 
                                         // non primitive but common
-                                        if pType = typeof<decimal> then
+                                        // Enum
+                                        if pType.IsEnum then
+                                            System.Convert.ToInt32( originalArgs.[i] ).ToString() :> obj
+
+                                        elif pType = typeof<decimal> then
                                             originalArgs.[i].ToString() :> obj
                                         
                                         // IntegralTypeName
@@ -34,9 +38,6 @@ module Serialization
                                              pType = typeof<Single> then
                                             originalArgs.[i].ToString() :> obj
 
-                                        // Enum
-                                        elif pType.UnderlyingSystemType = typeof<Enum> then
-                                            System.Convert.ToInt32( originalArgs.[i] ).ToString() :> obj
 
                                         // Structs
                                         elif pType = typeof<Guid> then
@@ -64,7 +65,7 @@ module Serialization
                                         if pType = typeof<decimal> then
                                             System.Convert.ToDecimal(v) :> obj
                                         
-                                        elif pType.UnderlyingSystemType = typeof<Enum> then
+                                        elif pType.IsEnum then
                                             let iVal = System.Convert.ToInt32(v)
                                             iVal :> obj
 
@@ -77,7 +78,7 @@ module Serialization
                                         elif pType = typeof<byte> then
                                             System.Convert.ToByte(v) :> obj
 
-                                        elif pType = typeof<float> then
+                                        elif pType = typeof<float32> then
                                             System.Convert.ToSingle(v) :> obj
                                         
                                         elif pType = typeof<double> then

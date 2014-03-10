@@ -29,7 +29,7 @@ namespace ZMQ.Extensions
 
 		public virtual void Connect(Transport transport, string address, uint port, int timeout)
 		{
-//			this.timeout = timeout;
+			this.timeout = timeout;
 			socket = socketManager.Connect(Socket.BuildUri(transport, address, port), Type, timeout);
 		}
 

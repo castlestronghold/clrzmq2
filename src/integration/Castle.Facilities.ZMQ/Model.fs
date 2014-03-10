@@ -53,22 +53,25 @@
     [<ProtoInclude(1, typeof<ExceptionInfo>)>]
     type ResponseMessage(ret:obj, excp:ExceptionInfo) =
         let mutable returnValue = ret
-        let mutable returnValueArray : obj[] = [||]
+        // let mutable returnValueArray : obj[] = null
         let mutable exceptionThrown = excp
 
         new () = ResponseMessage(null, null)
+
+        [<ProtoMember(4)>]
+        member this.ExceptionInfo
+            with get() = exceptionThrown
+            and set(value) = exceptionThrown <- value
 
         [<ProtoMember(5, DynamicType = true)>]
         member this.ReturnValue
             with get() = returnValue
             and set(value) = returnValue <- value
 
+        (*
         [<ProtoMember(6, DynamicType = true)>]
         member this.ReturnValueArray
             with get() = returnValueArray
             and set(value) = returnValueArray <- value
+        *)
 
-        [<ProtoMember(7)>]
-        member this.ExceptionInfo
-            with get() = exceptionThrown
-            and set(value) = exceptionThrown <- value
