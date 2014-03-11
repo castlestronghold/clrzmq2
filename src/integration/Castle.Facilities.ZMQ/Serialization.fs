@@ -53,116 +53,102 @@ module Serialization
         typedList
 
 
+    let serialize_param i (t:ParameterInfo) (v:obj) = 
+        let pType = t.ParameterType
+        if pType.IsArray then failwithf "ZMQ facility doesnt support array as parameters"
+
+        if v = null then 
+            null 
+        else 
+            if pType.IsPrimitive then
+                v.ToString() :> obj
+
+            // non primitive but common
+
+            elif pType = typeof<decimal> then
+                v.ToString() :> obj
+
+            // Enum
+            elif pType.IsEnum then
+                System.Convert.ToInt32( v ).ToString() :> obj
+
+            elif pType = typeof<string> then
+                v
+
+            // Structs
+            elif pType = typeof<Guid> then
+                v.ToString() :> obj
+            elif pType = typeof<DateTime> then
+                let dt = (v :?> DateTime).Ticks
+                dt.ToString() :> obj
+            else
+                v        
+
     let serialize_parameters (originalArgs:obj[]) (ps:ParameterInfo[]) = 
         let args = 
             ps
-            |> Seq.mapi (fun i t -> if originalArgs.[i] = null then 
-                                        null 
-                                    else 
-                                                        
-                                        let pType = t.ParameterType
-
-                                        // non primitive but common
-                                        // Enum
-                                        if pType.IsEnum then
-                                            System.Convert.ToInt32( originalArgs.[i] ).ToString() :> obj
-
-                                        elif pType = typeof<decimal> then
-                                            originalArgs.[i].ToString() :> obj
-                                        
-                                        // IntegralTypeName
-                                        elif pType = typeof<int> || 
-                                             pType = typeof<int64> || 
-                                             pType = typeof<byte> ||
-                                             pType = typeof<int16> then
-
-                                            originalArgs.[i].ToString() :> obj
-
-                                        // FloatingPointTypeName 
-                                        elif pType = typeof<float> || 
-                                             pType = typeof<double> || 
-                                             pType = typeof<Single> then
-                                            originalArgs.[i].ToString() :> obj
-
-                                        // Structs
-                                        elif pType = typeof<Guid> then
-                                            originalArgs.[i].ToString() :> obj
-                                        elif pType = typeof<DateTime> then
-                                            let dt = (originalArgs.[i] :?> DateTime).Ticks
-                                            dt.ToString() :> obj
-                                        else
-                                            originalArgs.[i]
-                        )
+            |> Seq.mapi (fun i t -> serialize_param i t (originalArgs.[i]))
             |> Seq.toArray
         args
+
+    let deserialize_param i (v:obj) (pType:Type) = 
+        if pType = typeof<decimal> then
+            System.Convert.ToDecimal(v) :> obj
+                                        
+        elif pType.IsEnum then
+            let iVal = System.Convert.ToInt32(v)
+            iVal :> obj
+
+        elif pType = typeof<int> then
+            System.Convert.ToInt32(v) :> obj
+        elif pType = typeof<int16> then
+            System.Convert.ToInt16(v) :> obj
+        elif pType = typeof<int64> then
+            System.Convert.ToInt64(v) :> obj
+        elif pType = typeof<byte> then
+            System.Convert.ToByte(v) :> obj
+
+        elif pType = typeof<float32> then
+            System.Convert.ToSingle(v) :> obj
+                                        
+        elif pType = typeof<double> then
+            System.Convert.ToDouble(v) :> obj
+
+        elif pType = typeof<Guid> then
+            Guid.Parse(v.ToString()) :> obj
+
+        elif pType = typeof<DateTime> then
+            let long = Convert.ToInt64(v)
+            DateTime(long) :> obj
+        else
+            v
+
 
     let deserialize_params (parms:obj[]) (ps:ParameterInfo[]) = 
         // ref / out params not supported
         if parms = null then null
         else 
-            let pDefs = 
-                ps
-                |> Seq.map (fun p -> p.ParameterType) 
-                |> Seq.toArray
             parms 
-            |> Seq.mapi (fun i v -> (   let pType = pDefs.[i]
-
-                                        if pType = typeof<decimal> then
-                                            System.Convert.ToDecimal(v) :> obj
-                                        
-                                        elif pType.IsEnum then
-                                            let iVal = System.Convert.ToInt32(v)
-                                            iVal :> obj
-
-                                        elif pType = typeof<int> then
-                                            System.Convert.ToInt32(v) :> obj
-                                        elif pType = typeof<int16> then
-                                            System.Convert.ToInt16(v) :> obj
-                                        elif pType = typeof<int64> then
-                                            System.Convert.ToInt64(v) :> obj
-                                        elif pType = typeof<byte> then
-                                            System.Convert.ToByte(v) :> obj
-
-                                        elif pType = typeof<float32> then
-                                            System.Convert.ToSingle(v) :> obj
-                                        
-                                        elif pType = typeof<double> then
-                                            System.Convert.ToDouble(v) :> obj
-
-                                        elif pType = typeof<Guid> then
-                                            Guid.Parse(v.ToString()) :> obj
-
-                                        elif pType = typeof<DateTime> then
-                                            let long = Convert.ToInt64(v)
-                                            DateTime(long) :> obj
-                                        else
-                                            v
-                                    )) 
+            |> Seq.mapi (fun i v -> deserialize_param i v (ps.[i].ParameterType)) 
             |> Seq.toArray
 
 
-
     let serialize_with_protobuf(instance: 'a) =
-        try
-            // let watch = System.Diagnostics.Stopwatch()
-            // watch.Start()
-            use input = new MemoryStream()
-            Serializer.Serialize(input, instance)
-            input.Flush()
-
-            // watch.Stop()
-            // Console.Out.WriteLine ("serialize_with_protobuf {0} elapsed {1}", input.Length, watch.ElapsedTicks)
-            input.ToArray()
-
-        with 
-            | ex  -> 
-                Console.WriteLine( ex)
-                reraise()
+        // let watch = System.Diagnostics.Stopwatch()
+        // watch.Start()
+        use input = new MemoryStream()
+        Serializer.Serialize(input, instance)
+        input.Flush()
+        // watch.Stop()
+        // Console.Out.WriteLine ("serialize_with_protobuf {0} elapsed {1}", input.Length, watch.ElapsedTicks)
+        input.ToArray()
 
 
     let deserialize_with_protobuf<'a> (bytes:byte array) : 'a =
         use input = new MemoryStream(bytes)
         Serializer.Deserialize<'a>(input)
+
+
 
 
 

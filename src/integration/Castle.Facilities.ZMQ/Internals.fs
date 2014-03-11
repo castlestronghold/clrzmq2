@@ -116,12 +116,10 @@ open System.Runtime.Remoting.Messaging
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
         inherit BaseRequest<ResponseMessage>(zContextAccessor)
 
-        (*
         let sentCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfRequestsSent)
         let receivedCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfResponseReceived)
         let elapsedCounter = PerfCounterRegistry.Get(PerfCounters.AverageRequestTime)
         let baseElapsedCounter = PerfCounterRegistry.Get(PerfCounters.BaseRequestTime)
-        *)
 
         let config = lazy
                         let parts = endpoint.Split(':')

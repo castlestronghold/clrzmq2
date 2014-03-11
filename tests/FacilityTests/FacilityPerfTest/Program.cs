@@ -48,15 +48,15 @@
 
 		private static void InvokeBatch(IRemoteServ1 service)
 		{
-//			try
-//			{
-//				service.DoSomethingWrong();
-//				Assert.Fail("Expecting exception here");
-//			}
-//			catch (Exception ex)
-//			{
-//				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
-//			}
+			try
+			{
+				service.DoSomethingWrong();
+				Assert.Fail("Expecting exception here");
+			}
+			catch (Exception ex)
+			{
+				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
+			}
 
 			var watch = new System.Diagnostics.Stopwatch();
 			watch.Start();
@@ -88,6 +88,8 @@
 				var array = service.UsingArray();
 				Assert.IsNotNull(array);
 				Assert.AreEqual(2, array.Length);
+
+//				service.ParamWithArray(new [] { "1", "2", "3" });
 			}
 
 			watch.Stop();
@@ -137,23 +139,20 @@
 	public interface IRemoteServ1
 	{
 		void NoParamsOrReturn();
-
 		string JustReturn();
-
 		void JustParams(string p1);
-
+		void ParamWithArray(string[] p1);
+		void ParamWithArray2(int[] p1);
+		void ParamWithArray3(Derived2[] p1);
+		void ParamWithArray4(Base[] p1);
 		string ParamsAndReturn(Guid id, string p1, int p2, DateTime dt, decimal p4, FileAccess acc, short s1, byte b1, float f1, double d1);
-
 		void ParamsWithStruct(MyCustomStruct p1);
 		void ParamsWithCustomType1(Impl1 p1);
 		void ParamsWithCustomType2(IContract1 p1);
-
 		void WithInheritanceParam(Base b);
 		Base WithInheritanceRet();
-
 		IEnumerable<Derived1> UsingEnumerators();
 		Derived1[] UsingArray();
-
 		void DoSomethingWrong();
 	}
 
@@ -250,6 +249,30 @@
 		public void DoSomethingWrong()
 		{
 			throw new Exception("simple message");
+		}
+
+		public void ParamWithArray(string[] p1)
+		{
+			Assert.NotNull(p1);
+			Assert.AreEqual(3, p1.Length);
+		}
+
+		public void ParamWithArray2(int[] p1)
+		{
+			Assert.NotNull(p1);
+			Assert.AreEqual(3, p1.Length);
+		}
+
+		public void ParamWithArray3(Derived2[] p1)
+		{
+			Assert.NotNull(p1);
+			Assert.AreEqual(3, p1.Length);
+		}
+
+		public void ParamWithArray4(Base[] p1)
+		{
+			Assert.NotNull(p1);
+			Assert.AreEqual(3, p1.Length);
 		}
 	}
 }
