@@ -11,7 +11,7 @@ namespace ZMQ.Extensions
 		private static readonly SocketManager socketManager = SocketManager.Instance.Value;
 
 		public const int InfiniteTimeout = -1;
-		public const int DefaultTimeout = 2000;
+		public const int DefaultTimeout = 15000;
 
 		private Socket socket;
 		private int timeout = -1;
