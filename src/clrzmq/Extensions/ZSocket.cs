@@ -15,6 +15,7 @@ namespace ZMQ.Extensions
 
 		private Socket socket;
 		private int timeout = -1;
+		private bool disposed = false;
 
 		protected ZSocket()
 		{
@@ -60,6 +61,8 @@ namespace ZMQ.Extensions
 		{
 			try
 			{
+				disposed = true;
+
 				if (socket != null)
 					socketManager.ReturnOrDispose(socket, Type);
 			}
@@ -67,6 +70,12 @@ namespace ZMQ.Extensions
 			{
 				logger.Error("Error disposing ZSocket.", e);
 			}
+		}
+
+		~ZSocket()
+		{
+			if (!disposed)
+				Dispose();
 		}
 
 		public virtual void Send(string message, Encoding encoding)

@@ -100,6 +100,11 @@ namespace ZMQ.Extensions
 				throw new ObjectDisposedException("SocketManager is already disposed.");
 		}
 
+		~SocketManager()
+		{
+			Dispose();
+		}
+
 		[HandleProcessCorruptedStateExceptions, SecurityCritical]
 		public void Dispose()
 		{
