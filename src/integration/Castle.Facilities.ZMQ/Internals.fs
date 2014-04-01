@@ -38,9 +38,8 @@ open System.Runtime.Remoting.Messaging
                 
             let instance = kernel.Resolve(resolvedType)
 
-            // assumption: overload is not supported
             let methodBase = 
-                resolvedType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public)
+                resolvedType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public, null, parms |> Array.map (fun p -> p.GetType()), null)
 
             let args = deserialize_params parms (methodBase.GetParameters())
 
@@ -127,7 +126,7 @@ open System.Runtime.Remoting.Messaging
 
         override this.GetConfig() = config.Force()
 
-        override this.Timeout with get() = 7500
+        override this.Timeout with get() = 30 * 1000
 
         override this.InternalGet(socket) =
             let watch = new Stopwatch()
