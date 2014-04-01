@@ -124,12 +124,12 @@ module Serialization
             v
 
 
-    let deserialize_params (parms:obj[]) (ps:ParameterInfo[]) = 
+    let deserialize_params (parms:obj[]) (ps:Type[]) = 
         // ref / out params not supported
         if parms = null then null
         else 
             parms 
-            |> Seq.mapi (fun i v -> deserialize_param i v (ps.[i].ParameterType)) 
+            |> Seq.mapi (fun i v -> deserialize_param i v (ps.[i])) 
             |> Seq.toArray
 
 
@@ -148,9 +148,21 @@ module Serialization
         use input = new MemoryStream(bytes)
         Serializer.Deserialize<'a>(input)
 
+    let serialize_method_meta (ps:ParameterInfo[]) = 
+        ps |> Array.map (fun p -> p.ParameterType) |> Array.map (fun t -> t.AssemblyQualifiedName)
 
+    let _typename2Type = System.Collections.Concurrent.ConcurrentDictionary<string,Type>(StringComparer.Ordinal)
 
+    let resolvedType (target: string) = 
+        let res, t = _typename2Type.TryGetValue target
+        if not res then
+            let tgtType = Type.GetType(target)
+            _typename2Type.TryAdd (target, tgtType) |> ignore
+            tgtType
+        else t
 
+    let deserialize_method_meta (meta: string array) = 
+        meta |> Array.map (fun m -> resolvedType(m))
 
     // let internal netbinarySerializer = new NetDataContractSerializer();
 

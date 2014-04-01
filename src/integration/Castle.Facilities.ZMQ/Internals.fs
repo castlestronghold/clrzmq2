@@ -25,23 +25,27 @@ open System.Runtime.Remoting.Messaging
 
 
     type Dispatcher(kernel:IKernel) =
-        let _typename2Type = ConcurrentDictionary<string,Type>(StringComparer.Ordinal)
+        static let logger = log4net.LogManager.GetLogger(typeof<Dispatcher>)
+        
+        member this.Invoke(target:string, methd:string, parms: obj array, meta: string array) = 
 
-        member this.Invoke(target:string, methd:string, parms: obj array) = 
-            let resolvedType = 
-                let res, t = _typename2Type.TryGetValue target
-                if not res then
-                    let tgtType = Type.GetType(target)
-                    _typename2Type.TryAdd (target, tgtType) |> ignore
-                    tgtType
-                else t
+            logger.WarnFormat("Target: {0}. Method: {1}. Meta: {2}", target, methd, String.Join(",", meta))
                 
-            let instance = kernel.Resolve(resolvedType)
+            let targetType = resolvedType(target)
+
+            logger.WarnFormat("TargetType: {0}", targetType.Name)
+
+            let instance = kernel.Resolve(targetType)
+
+            let methodMeta = deserialize_method_meta meta
+
+            for m in methodMeta do
+                logger.WarnFormat("methodMeta: {0}.", m)
 
             let methodBase = 
-                resolvedType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public, null, parms |> Array.map (fun p -> p.GetType()), null)
+                targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public, null, methodMeta, null)
 
-            let args = deserialize_params parms (methodBase.GetParameters())
+            let args = deserialize_params parms methodMeta
 
             methodBase.Invoke(instance, args)
 
@@ -72,21 +76,26 @@ open System.Runtime.Remoting.Messaging
             try
                 let request = deserialize_with_protobuf<RequestMessage>(message);
 
-                let result = 
-                    dispatcher.Invoke(request.TargetService, 
-                                        request.TargetMethod, 
-                                        request.MethodParams )
+                try
+                    let result = 
+                        dispatcher.Invoke(request.TargetService, request.TargetMethod, request.MethodParams, request.MethodMeta)
                                 
-                if is_collection (result) then
-                    let arrayRes = to_array result
-                    response <- ResponseMessage(null, null, ReturnValueArray = arrayRes)
-                else 
-                    response <- ResponseMessage(result, null)
+                    if is_collection (result) then
+                        let arrayRes = to_array result
+                        response <- ResponseMessage(null, null, ReturnValueArray = arrayRes)
+                    else 
+                        response <- ResponseMessage(result, null)
+                with
+                    | :? TargetInvocationException as ex ->
+                        let e = ex.InnerException 
+                        base.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, e)
+                        response <- ResponseMessage(null, ExceptionInfo(e.GetType().Name, e.Message) )
+                    | ex -> 
+                        base.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, ex)
+                        response <- ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message))
             with
-                | :? TargetInvocationException as ex ->
-                    let e = ex.InnerException 
-                    response <- ResponseMessage(null, ExceptionInfo(e.GetType().Name, e.Message) )
                 | ex -> 
+                    base.Logger.Error("Error executing remote invocation", ex)
                     response <- ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message))
 
             try
@@ -117,8 +126,8 @@ open System.Runtime.Remoting.Messaging
 
         let sentCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfRequestsSent)
         let receivedCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfResponseReceived)
-        let elapsedCounter = PerfCounterRegistry.Get(PerfCounters.AverageRequestTime)
-        let baseElapsedCounter = PerfCounterRegistry.Get(PerfCounters.BaseRequestTime)
+//        let elapsedCounter = PerfCounterRegistry.Get(PerfCounters.AverageRequestTime)
+//        let baseElapsedCounter = PerfCounterRegistry.Get(PerfCounters.BaseRequestTime)
 
         let config = lazy
                         let parts = endpoint.Split(':')
@@ -129,9 +138,9 @@ open System.Runtime.Remoting.Messaging
         override this.Timeout with get() = 30 * 1000
 
         override this.InternalGet(socket) =
-            let watch = new Stopwatch()
-
-            watch.Start()
+//            let watch = new Stopwatch()
+//
+//            watch.Start()
 
             socket.Send(serialize_with_protobuf(message))
     
@@ -139,13 +148,13 @@ open System.Runtime.Remoting.Messaging
 
             let bytes = socket.Recv(ZSocket.InfiniteTimeout)
             
-            watch.Stop()
+//            watch.Stop()
 
             if bytes <> null then
                 receivedCounter.Increment() |> ignore
 
-                elapsedCounter.IncrementBy(watch.ElapsedTicks) |> ignore
-                baseElapsedCounter.Increment() |> ignore
+//                elapsedCounter.IncrementBy(watch.ElapsedTicks) |> ignore
+//                baseElapsedCounter.Increment() |> ignore
 
             deserialize_with_protobuf<ResponseMessage>(bytes)
 
@@ -191,10 +200,13 @@ open System.Runtime.Remoting.Messaging
                     if invocation.TargetType <> null then
                         invocation.Proceed()
                     else
+                        let pInfo = invocation.Method.GetParameters()
                         let args = 
-                            serialize_parameters (invocation.Arguments) (invocation.Method.GetParameters())
+                            serialize_parameters (invocation.Arguments) pInfo
 
-                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, args)
+                        let methodMeta = serialize_method_meta pInfo
+
+                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, args, methodMeta)
                         let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
 
                         let request = RemoteRequest(zContextAccessor, request, endpoint)

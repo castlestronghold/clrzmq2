@@ -5,12 +5,13 @@
 
     [<Serializable; AllowNullLiteralAttribute>]
     [<ProtoContract>]
-    type RequestMessage(service:string, methd:string, parms:obj array) =
+    type RequestMessage(service:string, methd:string, parms:obj array, meta: string array) =
         let mutable targetService:string = service
         let mutable targetMethod:string = methd
         let mutable methodParams = parms
+        let mutable methodMedta = meta
         
-        new () = RequestMessage(null, null, null)
+        new () = RequestMessage(null, null, null, null)
 
         [<ProtoMember(1)>]
         member this.TargetService
@@ -26,6 +27,11 @@
         member this.MethodParams
             with get() = methodParams
             and set(value) = methodParams <- value
+
+        [<ProtoMember(4)>]
+        member this.MethodMeta
+            with get() = methodMedta
+            and set(value) = methodMedta <- value
 
 
     [<Serializable; AllowNullLiteralAttribute>]
