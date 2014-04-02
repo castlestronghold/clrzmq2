@@ -4,7 +4,6 @@
 	using Castle.MicroKernel.Registration;
 	using Castle.Windsor;
 	using Castle.Windsor.Configuration.Interpreters;
-	using FluentAssertions;
 	using NUnit.Framework;
 
 	public struct MyCustomStruct
@@ -110,7 +109,7 @@
 		public void JustReturnCall()
 		{
 			var service = _containerClient.Resolve<IRemoteServ1>();
-			service.JustReturn().Should().Be("abc");
+			Assert.AreEqual("abc", service.JustReturn());
 		}
 		
 		[Test]
@@ -138,7 +137,7 @@
 		public void ParamsAndReturnCall()
 		{
 			var service = _containerClient.Resolve<IRemoteServ1>();
-			service.ParamsAndReturn("").Should().Be("123");
+			Assert.AreEqual("123", service.ParamsAndReturn(""));
 		}
 	}
 }

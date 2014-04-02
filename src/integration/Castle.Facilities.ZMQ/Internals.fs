@@ -20,7 +20,6 @@ open Castle.MicroKernel.Facilities
 open Castle.MicroKernel.ModelBuilder.Inspectors
 open Castle.MicroKernel.Registration
 open Castle.Facilities.ZMQ
-open ZMQ.Counters
 open System.Runtime.Remoting.Messaging
 
 
@@ -29,23 +28,18 @@ open System.Runtime.Remoting.Messaging
         
         member this.Invoke(target:string, methd:string, parms: obj array, meta: string array) = 
 
-            logger.WarnFormat("Target: {0}. Method: {1}. Meta: {2}", target, methd, String.Join(",", meta))
-                
             let targetType = resolvedType(target)
-
-            logger.WarnFormat("TargetType: {0}", targetType.Name)
 
             let instance = kernel.Resolve(targetType)
 
             let methodMeta = deserialize_method_meta meta
 
-            for m in methodMeta do
-                logger.WarnFormat("methodMeta: {0}.", m)
-
             let methodBase = 
                 targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public, null, methodMeta, null)
+            // let methodBase = targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public)
 
             let args = deserialize_params parms methodMeta
+            // let args = deserialize_params parms (methodBase.GetParameters() |> Array.map (fun p -> p.ParameterType))
 
             methodBase.Invoke(instance, args)
 
@@ -124,10 +118,6 @@ open System.Runtime.Remoting.Messaging
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
         inherit BaseRequest<ResponseMessage>(zContextAccessor)
 
-        let sentCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfRequestsSent)
-        let receivedCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfResponseReceived)
-//        let elapsedCounter = PerfCounterRegistry.Get(PerfCounters.AverageRequestTime)
-//        let baseElapsedCounter = PerfCounterRegistry.Get(PerfCounters.BaseRequestTime)
 
         let config = lazy
                         let parts = endpoint.Split(':')
@@ -138,21 +128,15 @@ open System.Runtime.Remoting.Messaging
         override this.Timeout with get() = 30 * 1000
 
         override this.InternalGet(socket) =
-//            let watch = new Stopwatch()
-//
-//            watch.Start()
-
             socket.Send(serialize_with_protobuf(message))
     
-            sentCounter.Increment() |> ignore
+            PerfCounters.IncrementSent ()
 
             let bytes = socket.Recv(ZSocket.InfiniteTimeout)
             
-//            watch.Stop()
-
             if bytes <> null then
-                receivedCounter.Increment() |> ignore
-
+                PerfCounters.IncrementRcv ()
+                
 //                elapsedCounter.IncrementBy(watch.ElapsedTicks) |> ignore
 //                baseElapsedCounter.Increment() |> ignore
 
@@ -213,7 +197,7 @@ open System.Runtime.Remoting.Messaging
                         let response = request.Get()
 
                         if response.ExceptionInfo <> null then
-                            let msg = sprintf "Remote server threw %s with message %s" (response.ExceptionInfo.Typename) (response.ExceptionInfo.Message)
+                            let msg = "Remote server threw " + (response.ExceptionInfo.Typename) + " with message " + (response.ExceptionInfo.Message)
                             raise (new Exception(msg))
 
                         if invocation.Method.ReturnType <> typeof<Void> then

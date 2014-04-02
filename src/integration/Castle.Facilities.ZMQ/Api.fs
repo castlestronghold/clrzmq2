@@ -25,7 +25,6 @@ open Castle.Facilities.ZMQ.Internals
 
         member this.setup_client() =
             let router = base.Kernel.Resolve<RemoteRouter>()
-
             router.ParseRoutes(base.FacilityConfig.Children.["endpoints"])
 
         override this.Init() =
@@ -42,6 +41,8 @@ open Castle.Facilities.ZMQ.Internals
 //            if not isServer then
             base.Kernel.ComponentModelBuilder.AddContributor(new RemoteRequestInspector())
 
+            PerfCounters.setIsEnabled ( StringComparer.OrdinalIgnoreCase.Equals("true", base.FacilityConfig.Attributes.["usePerfCounter"]) )
+
             if isServer then
                 this.setup_server()
 
@@ -53,3 +54,4 @@ open Castle.Facilities.ZMQ.Internals
         override this.Dispose() = 
             if !_reaper <> null then 
                 (!_reaper :> IDisposable).Dispose();
+

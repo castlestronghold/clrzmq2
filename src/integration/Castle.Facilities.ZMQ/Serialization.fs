@@ -143,7 +143,6 @@ module Serialization
         // Console.Out.WriteLine ("serialize_with_protobuf {0} elapsed {1}", input.Length, watch.ElapsedTicks)
         input.ToArray()
 
-
     let deserialize_with_protobuf<'a> (bytes:byte array) : 'a =
         use input = new MemoryStream(bytes)
         Serializer.Deserialize<'a>(input)
@@ -162,7 +161,9 @@ module Serialization
         else t
 
     let deserialize_method_meta (meta: string array) = 
-        meta |> Array.map (fun m -> resolvedType(m))
+        if (meta = null || meta.Length = 0)
+        then Array.empty<Type>
+        else meta |> Array.map (fun m -> resolvedType(m))
 
     // let internal netbinarySerializer = new NetDataContractSerializer();
 

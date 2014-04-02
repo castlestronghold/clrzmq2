@@ -80,6 +80,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\clrzmq-ext\clrzmq-ext.csproj">
+      <Project>{7203cf55-a452-407e-b767-4aa7ba616794}</Project>
+      <Name>clrzmq-ext</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\src\clrzmq\clrzmq.csproj">
       <Project>{fe6d6cdd-8a04-4a3a-a654-5c687ab724e3}</Project>
       <Name>clrzmq</Name>
