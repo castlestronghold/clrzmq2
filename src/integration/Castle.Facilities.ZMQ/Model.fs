@@ -4,7 +4,7 @@
     open ProtoBuf
 
     [<Serializable; AllowNullLiteralAttribute>]
-    [<ProtoContract>]
+    [<ProtoContract(SkipConstructor=true)>]
     type ParamTuple(value:byte[], typeN:string) =
         let mutable serializedValue = value
         let mutable typeName = typeN
