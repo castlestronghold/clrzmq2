@@ -26,7 +26,7 @@ open System.Runtime.Remoting.Messaging
     type Dispatcher(kernel:IKernel) =
         static let logger = log4net.LogManager.GetLogger(typeof<Dispatcher>)
         
-        member this.Invoke(target:string, methd:string, parms: obj array, meta: string array) = 
+        member this.Invoke(target:string, methd:string, parms: ParamTuple array, meta: string array) = 
 
             let targetType = resolvedType(target)
 
@@ -72,11 +72,15 @@ open System.Runtime.Remoting.Messaging
 
                 try
                     let result = 
-                        dispatcher.Invoke(request.TargetService, request.TargetMethod, request.MethodParams, request.MethodMeta)
+                        dispatcher.Invoke(request.TargetService, request.TargetMethod, request.Params, request.ParamTypes)
                                 
                     if is_collection (result) then
                         let arrayRes = to_array result
-                        response <- ResponseMessage(null, null, ReturnValueArray = arrayRes)
+                        let sArray = serialize_array arrayRes
+                        // let sArray = serialize_array arrayRes
+                        // let values = sArray |> Array.map fst
+                        // let types = sArray |> Array.map snd
+                        response <- ResponseMessage(null, null, ReturnValueArray = sArray) (* , ReturnValueArrayType = types) *)
                     else 
                         response <- ResponseMessage(result, null)
                 with
@@ -185,12 +189,14 @@ open System.Runtime.Remoting.Messaging
                         invocation.Proceed()
                     else
                         let pInfo = invocation.Method.GetParameters()
+                        let pTypes = pInfo |> Array.map (fun p -> p.ParameterType)
                         let args = 
-                            serialize_parameters (invocation.Arguments) pInfo
+                            serialize_parameters (invocation.Arguments) pTypes 
 
                         let methodMeta = serialize_method_meta pInfo
 
-                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, args, methodMeta)
+                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, 
+                                                     invocation.Method.Name, args, methodMeta)
                         let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
 
                         let request = RemoteRequest(zContextAccessor, request, endpoint)
@@ -206,12 +212,16 @@ open System.Runtime.Remoting.Messaging
                                 then response.ReturnValue
                                 else 
                                     if response.ReturnValueArray <> null then
+                                        let retType = invocation.Method.ReturnType
+
                                         if invocation.Method.ReturnType.IsArray then
                                             let arrayElemType = invocation.Method.ReturnType.GetElementType()
-                                            (make_strongly_typed_array arrayElemType (response.ReturnValueArray)) :> obj
+                                            let items = deserialize_array retType response.ReturnValueArray
+                                            (make_strongly_typed_array arrayElemType (items)) :> obj
                                         else
                                             let itemType = invocation.Method.ReturnType.GetGenericArguments().[0]
-                                            (make_strongly_typed_enumerable itemType (response.ReturnValueArray))
+                                            let items = deserialize_array retType response.ReturnValueArray
+                                            (make_strongly_typed_enumerable itemType (items))
                                     else null
                                     
                 finally
