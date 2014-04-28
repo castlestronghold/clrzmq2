@@ -42,18 +42,6 @@
         [<ProtoMember(4)>]
         member this.ParamTypes with get() = methodParamTypes and set(v) = methodParamTypes <- v
 
-        (*
-        [<ProtoMember(3, DynamicType = true)>]
-        member this.MethodParams
-            with get() = methodParams
-            and set(value) = methodParams <- value
-
-        [<ProtoMember(4)>]
-        member this.MethodMeta
-            with get() = methodMedta
-            and set(value) = methodMedta <- value
-        *)
-
 
     [<Serializable; AllowNullLiteralAttribute>]
     [<ProtoContract>]
@@ -74,24 +62,12 @@
             and set(value) = messageV <- value
 
 
-    (*
-    [<ProtoContract>]
-    type StringBag(value:string) =
-        let mutable _val = value
-        new () = StringBag(null)
-
-        [<ProtoMember(1)>]
-        member x.Value with get() = _val and set(v) = _val <- v
-    *)
-
-
     [<Serializable; AllowNullLiteralAttribute>]
     [<ProtoContract>]
     [<ProtoInclude(1, typeof<ExceptionInfo>)>]
     type ResponseMessage(ret:byte[], retType:string, excp:ExceptionInfo) =
         let mutable returnValue = ret
         let mutable returnValueType : string = retType
-        // let mutable returnValueArray : byte[] = null
         let mutable exceptionThrown = excp
 
         new () = ResponseMessage(null, null, null)
@@ -110,9 +86,4 @@
         member this.ReturnValueType
             with get() = returnValueType and set(value) = returnValueType <- value
 
-        (*
-        [<ProtoMember(4)>]
-        member this.ReturnValueArray
-            with get() = returnValueArray
-            and set(value) = returnValueArray <- value
-        *)
+        

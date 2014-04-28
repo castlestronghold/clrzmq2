@@ -32,11 +32,16 @@
 
             let instance = kernel.Resolve(targetType)
 
-            let methodMeta = deserialize_method_meta meta
+            let methodBase : MethodInfo = 
+                if meta <> null 
+                then
+                    let methodMeta = deserialize_method_meta meta  
+                    targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public, null, methodMeta, null)
+                else targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public)
 
-            let methodBase = 
-                targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public, null, methodMeta, null)
-            // let methodBase = targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public)
+            let methodMeta = 
+                methodBase.GetParameters() 
+                |> Array.map (fun p -> p.ParameterType)
 
             let args = deserialize_params parms methodMeta
             // let args = deserialize_params parms (methodBase.GetParameters() |> Array.map (fun p -> p.ParameterType))

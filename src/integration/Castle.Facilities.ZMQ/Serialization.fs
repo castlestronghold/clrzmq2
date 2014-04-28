@@ -237,10 +237,6 @@
                 if is_collection_type (retType) then
                     let arrayRes = to_array result
                     let sArray = serialize_array arrayRes
-                    // let sArray = serialize_array arrayRes
-                    // let values = sArray |> Array.map fst
-                    // let types  = sArray |> Array.map snd
-                    // ReturnValueArray = sArray
                     ResponseMessage(sArray, retType.AssemblyQualifiedName, null) (* , ReturnValueArrayType = types) *)
                 elif result <> null then
                     let retTuple = serialize_param (result.GetType()) result
