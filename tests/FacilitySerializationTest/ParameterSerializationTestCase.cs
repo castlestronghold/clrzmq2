@@ -1,7 +1,6 @@
 ﻿namespace FacilitySerializationTest
 {
 	using System;
-	using System.IO;
 	using System.Linq;
 	using FluentAssertions;
 	using NUnit.Framework;
@@ -47,7 +46,6 @@
 		{
 			var types = new[] { typeof(MyCustomClass) };
 
-			var dt = DateTime.Now;
 			var buffers = TransportSerialization.serialize_parameters(
 				new object[]
 				{
@@ -64,20 +62,4 @@
 			my.Name.Should().Be("test");
 		}
     }
-
-	[TestFixture]
-	public class FromProtoBufJsTestCase
-	{
-		[Test]
-		public void Simple_RequestObject()
-		{
-			var contentInBase64 = "CgtzZXJ2aWNlbmFtZRIKbWV0aG9kbmFtZRoXCg0KC3N0cmluZ3ZhbHVlEgZzdHJpbmcaLAobCg10eXBlbmFtZSBoZXJlEgp2YWx1ZSBoZXJlEg1FeGNlcHRpb25JbmZvIgZzdHJpbmciDUV4Y2VwdGlvbkluZm8=";
-			var buffer = Convert.FromBase64String(contentInBase64);
-
-			var reqMes = ProtoBuf.Serializer.Deserialize<RequestMessage>(new MemoryStream(buffer));
-			
-
-
-		}
-	}
 }

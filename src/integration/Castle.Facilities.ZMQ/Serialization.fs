@@ -12,16 +12,18 @@
     [<AutoOpen>]
     module TransportSerialization =
 
-        let  is_collection o =
+        let is_collection_type (t:Type) =
+            let isGen = t.IsGenericType
+            if t = typeof<string> then false
+            elif isGen && (t.GetGenericTypeDefinition() = typedefof<IEnumerable<_>>) 
+            then true
+            else t.IsArray
+
+        let is_collection o =
             if o = null then false
             else
                 let t = o.GetType()
-                let isGen = t.IsGenericType
-                if t = typeof<string> then false
-                elif isGen && (t.GetGenericTypeDefinition() = typedefof<IEnumerable<_>>) then
-                    true
-                else 
-                    t.IsArray
+                is_collection_type t
 
         let to_array (o:obj) =
             if o = null then [||]
@@ -49,13 +51,12 @@
                 Buffer.BlockCopy(buffer, 0, smallbuffer, 0, small)
                 smallbuffer
             
-
         let deserialize_array (arType:Type) (buffer:byte[]) = 
             let stream = new MemoryStream(buffer)
             // ProtoBuf.Meta.RuntimeTypeModel.Default.DeserializeItems(stream, PrefixStyle. arr)
 
             let res = ProtoBuf.Meta.RuntimeTypeModel.Default.Deserialize(stream, null, arType)
-            res :?> Array
+            res :?> System.Collections.IList
 
         // return tuple (buffer + typename) array
         let serialize_array arr = 
@@ -71,29 +72,29 @@
             ProtoBuf.Meta.RuntimeTypeModel.Default.Serialize(stream, arr)
             slice_buffer (stream.GetBuffer()) stream.Length
 
-        let make_strongly_typed_array (expectedType:Type) (items:Array) = 
-            let typedArray = Array.CreateInstance(expectedType, items.Length)
-            let len = items.GetLength(0)
+        let make_strongly_typed_array (expectedType:Type) (items:System.Collections.IList) = 
+            let typedArray = Array.CreateInstance(expectedType, items.Count)
+            let len = items.Count
             for i=0 to len - 1 do
-                let e = items.GetValue(i)
+                let e = items.[i]
                 typedArray.SetValue(e,i)
                 ()
             typedArray
 
-        let make_strongly_typed_enumerable (expectedType:Type) (items:Array) = 
+        let make_strongly_typed_enumerable (expectedType:Type) (items:System.Collections.IList) = 
             let listType = typedefof<List<_>>.MakeGenericType(expectedType)
             let typedList = Activator.CreateInstance(listType)
             let addMethod = listType.GetMethod("Add")
-            let len = items.GetLength(0)
+            let len = items.Count
 
             for i=0 to len - 1 do
-                let e = items.GetValue(i)
+                let e = items.[i]
                 addMethod.Invoke(typedList, [| e |]) |> ignore
 
             typedList
 
 
-        let serialize_param i (pType:Type) (v:obj) = 
+        let serialize_param (pType:Type) (v:obj) = 
             // let pType = t.ParameterType
             if pType.IsArray then failwithf "ZMQ facility doesnt support array as parameters"
 
@@ -134,12 +135,12 @@
         let serialize_parameters (originalArgs:obj[]) (ps:Type[]) = 
             let args = 
                 ps
-                |> Seq.mapi (fun i t -> serialize_param i t (originalArgs.[i]))
+                |> Seq.mapi (fun i t -> serialize_param t (originalArgs.[i]))
                 |> Seq.toArray
             args
 
 
-        let deserialize_param i (param:ParamTuple) (expectedParamType:Type) = 
+        let deserialize_param (param:ParamTuple) (expectedParamType:Type) = 
             let serializedType = 
                 if param.TypeName = "string" 
                 then typeof<string>
@@ -192,7 +193,7 @@
             if parms = null then null
             else 
                 parms 
-                |> Seq.mapi (fun i v -> deserialize_param i v (ps.[i])) 
+                |> Seq.mapi (fun i v -> deserialize_param v (ps.[i])) 
                 |> Seq.toArray
 
 
@@ -228,4 +229,44 @@
             then Array.empty<Type>
             else meta |> Array.map (fun m -> resolvedType(m))
 
+
+        let build_response (result:obj) (retType) = 
+            if retType = typeof<Void> 
+            then ResponseMessage(null, null, null)
+            else 
+                if is_collection_type (retType) then
+                    let arrayRes = to_array result
+                    let sArray = serialize_array arrayRes
+                    // let sArray = serialize_array arrayRes
+                    // let values = sArray |> Array.map fst
+                    // let types  = sArray |> Array.map snd
+                    // ReturnValueArray = sArray
+                    ResponseMessage(sArray, retType.AssemblyQualifiedName, null) (* , ReturnValueArrayType = types) *)
+                elif result <> null then
+                    let retTuple = serialize_param (result.GetType()) result
+                    ResponseMessage(retTuple.SerializedValue, retTuple.TypeName, null)
+                else 
+                    ResponseMessage(null, null, null)
+
+        let build_response_with_exception (typename) (msg) = 
+            ResponseMessage(null, null, ExceptionInfo(typename, msg))
         
+
+        let deserialize_reponse (response:ResponseMessage) (retType:Type) = 
+            
+            if is_collection_type (retType) then
+                if retType.IsArray then
+                    let arrayElemType = retType.GetElementType()
+                    let items = deserialize_array retType response.ReturnValue
+                    (make_strongly_typed_array arrayElemType (items)) :> obj
+                else
+                    let itemType = retType.GetGenericArguments().[0]
+                    let items = deserialize_array retType response.ReturnValue
+                    (make_strongly_typed_enumerable itemType (items))
+            else
+                let serializedType = response.ReturnValueType
+                let serializedBuffer = response.ReturnValue
+                deserialize_param (ParamTuple(serializedBuffer, serializedType)) retType
+        
+        
+            

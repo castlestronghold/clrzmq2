@@ -88,21 +88,19 @@
     [<Serializable; AllowNullLiteralAttribute>]
     [<ProtoContract>]
     [<ProtoInclude(1, typeof<ExceptionInfo>)>]
-    type ResponseMessage(ret:obj, excp:ExceptionInfo) =
+    type ResponseMessage(ret:byte[], retType:string, excp:ExceptionInfo) =
         let mutable returnValue = ret
-        let mutable returnValueType : string = if ret <> null then ret.GetType().AssemblyQualifiedName else null
-        let mutable returnValueArray : byte[] = null
-        // let mutable returnValueArrayType : string[] = null
-        // let mutable returnValueArray : obj[] = null
+        let mutable returnValueType : string = retType
+        // let mutable returnValueArray : byte[] = null
         let mutable exceptionThrown = excp
 
-        new () = ResponseMessage(null, null)
+        new () = ResponseMessage(null, null, null)
 
         [<ProtoMember(1)>]
         member this.ExceptionInfo
             with get() = exceptionThrown
             and set(value) = exceptionThrown <- value
-
+        
         [<ProtoMember(2)>]
         member this.ReturnValue
             with get() = returnValue
@@ -112,23 +110,9 @@
         member this.ReturnValueType
             with get() = returnValueType and set(value) = returnValueType <- value
 
+        (*
         [<ProtoMember(4)>]
         member this.ReturnValueArray
             with get() = returnValueArray
             and set(value) = returnValueArray <- value
-
-        (*
-        [<ProtoMember(5)>]
-        member this.ReturnValueArrayType
-            with get() = returnValueArrayType and set(value) = returnValueArrayType <- value        
-
-        [<ProtoMember(5, DynamicType = true)>]
-        member this.ReturnValue
-            with get() = returnValue
-            and set(value) = returnValue <- value
-
-        [<ProtoMember(6, DynamicType = true)>]
-        member this.ReturnValueArray
-            with get() = returnValueArray
-            and set(value) = returnValueArray <- value        
         *)
