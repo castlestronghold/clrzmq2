@@ -33,6 +33,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Castle.Windsor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=407dd0808d44fbdc, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\src\integration\Castle.Facilities.ZMQ\bin\WIN_RELEASE\Castle.Windsor.dll</HintPath>
+    </Reference>
     <Reference Include="FluentAssertions">
       <HintPath>..\..\packages\FluentAssertions.2.2.0.0\lib\net40\FluentAssertions.dll</HintPath>
     </Reference>
@@ -53,6 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArraySerializationTestCase.cs" />
+    <Compile Include="DispatcherTestCase.cs" />
     <Compile Include="FromProtoBufJsTestCase.cs" />
     <Compile Include="ParameterSerializationTestCase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
