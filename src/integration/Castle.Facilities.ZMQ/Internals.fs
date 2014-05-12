@@ -76,6 +76,7 @@
             
             let response = 
                 try
+                    
                     let request = deserialize_with_protobuf<RequestMessage>(message);
 
                     try
@@ -144,7 +145,12 @@
                 PerfCounters.IncrementRcv ()
 //                elapsedCounter.IncrementBy(watch.ElapsedTicks) |> ignore
 //                baseElapsedCounter.Increment() |> ignore
-            deserialize_with_protobuf<ResponseMessage>(bytes)
+
+            if bytes = null then
+                let m = "Remote call took too long to respond. Is the server up? " + (config.Value.ToString())
+                ResponseMessage(null, null, ExceptionInfo("Timeout", m))
+            else
+                deserialize_with_protobuf<ResponseMessage>(bytes)
 
 
     type RemoteRouter() =
@@ -208,7 +214,7 @@
                             let msg = "Remote server threw " + (response.ExceptionInfo.Typename) + " with message " + (response.ExceptionInfo.Message)
                             raise (new Exception(msg))
 
-                        if invocation.Method.ReturnType <> typeof<Void> then
+                        else if invocation.Method.ReturnType <> typeof<Void> then
                             invocation.ReturnValue <- deserialize_reponse response invocation.Method.ReturnType
                                     
                 finally

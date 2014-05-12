@@ -12,37 +12,6 @@
     [<AutoOpen>]
     module TransportSerialization =
 
-        let is_collection_type (t:Type) =
-            let isGen = t.IsGenericType
-            if t = typeof<string> then false
-            elif isGen && (t.GetGenericTypeDefinition() = typedefof<IEnumerable<_>>) 
-            then true
-            else t.IsArray
-
-        let is_collection o =
-            if o = null then false
-            else
-                let t = o.GetType()
-                is_collection_type t
-
-        let to_array (o:obj) =
-            if o = null then [||]
-            else
-                let t = o.GetType()
-                let isGen = t.IsGenericType
-                if isGen && (t.GetGenericTypeDefinition() = typedefof<IEnumerable<_>>) then
-                    let elem = (o :?> IEnumerable<obj>) 
-                    let items = 
-                        seq {
-                            use enumerator = elem.GetEnumerator()
-                            while enumerator.MoveNext() do
-                                yield enumerator.Current
-                           }
-                    items |> Seq.toArray
-                else // isArray
-                    o :?> obj[]
-                    //[||]
-
         let inline slice_buffer (buffer:byte[]) (size:int64) = 
             let small = int(size)
             if buffer.Length = small then buffer
@@ -60,38 +29,11 @@
 
         // return tuple (buffer + typename) array
         let serialize_array arr = 
-            (*
-            let serialize_array_item (el) = 
-                
-                ProtoBuf.Meta.RuntimeTypeModel.Default.Serialize(stream, el)
-                (slice_buffer (stream.GetBuffer()) stream.Length , el.GetType().FullName)
-            arr |> Array.map serialize_array_item
-            *)
             let stream = new MemoryStream()
-            // ProtoBuf.Meta.RuntimeTypeModel.Default.
             ProtoBuf.Meta.RuntimeTypeModel.Default.Serialize(stream, arr)
             slice_buffer (stream.GetBuffer()) stream.Length
 
-        let make_strongly_typed_array (expectedType:Type) (items:System.Collections.IList) = 
-            let typedArray = Array.CreateInstance(expectedType, items.Count)
-            let len = items.Count
-            for i=0 to len - 1 do
-                let e = items.[i]
-                typedArray.SetValue(e,i)
-                ()
-            typedArray
 
-        let make_strongly_typed_enumerable (expectedType:Type) (items:System.Collections.IList) = 
-            let listType = typedefof<List<_>>.MakeGenericType(expectedType)
-            let typedList = Activator.CreateInstance(listType)
-            let addMethod = listType.GetMethod("Add")
-            let len = items.Count
-
-            for i=0 to len - 1 do
-                let e = items.[i]
-                addMethod.Invoke(typedList, [| e |]) |> ignore
-
-            typedList
 
 
         let serialize_param (pType:Type) (v:obj) = 
@@ -142,6 +84,8 @@
 
         let deserialize_param (param:ParamTuple) (expectedParamType:Type) = 
             let serializedType = 
+                if param.TypeName = null then raise (ArgumentException("ParamTuple has TypeName null - check if you're using compatible versions of the facility"))
+                    
                 if param.TypeName = "string" 
                 then typeof<string>
                 else Type.GetType(param.TypeName, true)
@@ -262,7 +206,10 @@
             else
                 let serializedType = response.ReturnValueType
                 let serializedBuffer = response.ReturnValue
-                deserialize_param (ParamTuple(serializedBuffer, serializedType)) retType
+
+                if serializedType = null && serializedBuffer = null 
+                then null
+                else deserialize_param (ParamTuple(serializedBuffer, serializedType)) retType
         
         
             

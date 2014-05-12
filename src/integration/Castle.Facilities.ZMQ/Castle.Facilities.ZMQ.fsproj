@@ -73,6 +73,7 @@
   <ItemGroup>
     <Compile Include="PerfCounters.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="ReflectionUtil.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="Attributes.fs" />
     <Compile Include="Internals.fs" />
