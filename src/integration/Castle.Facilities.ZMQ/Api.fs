@@ -1,11 +1,12 @@
 ﻿namespace Castle.Facilities.ZMQ
 
-open ZMQ.Extensions
-open System
-open Castle.Facilities.Startable
-open Castle.MicroKernel.Facilities
-open Castle.MicroKernel.Registration
-open Castle.Facilities.ZMQ.Internals
+    open ZMQ.Extensions
+    open System
+    open Castle.Facilities.Startable
+    open Castle.MicroKernel.Facilities
+    open Castle.MicroKernel.Registration
+    open Castle.Facilities.ZMQ.Internals
+
 
     type ZeroMQFacility() =
         inherit AbstractFacility()

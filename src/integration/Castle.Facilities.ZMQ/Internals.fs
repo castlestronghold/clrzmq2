@@ -1,47 +1,54 @@
 ﻿namespace Castle.Facilities.ZMQ.Internals
 
-open ZMQ
-open ZMQ.Extensions
-open ZMQ.ZMQDevice
-open System
-open System.IO
-open System.Diagnostics
-open System.Reflection
-open System.Collections.Generic
-open System.Collections.Concurrent
-open System.Threading
-open Castle.Core
-open Castle.Core.Configuration
-open Castle.Core.Interceptor
-open Castle.DynamicProxy
-open Castle.Windsor
-open Castle.MicroKernel
-open Castle.MicroKernel.Facilities
-open Castle.MicroKernel.ModelBuilder.Inspectors
-open Castle.MicroKernel.Registration
-open Castle.Facilities.ZMQ
-open System.Runtime.Remoting.Messaging
+    open ZMQ
+    open ZMQ.Extensions
+    open ZMQ.ZMQDevice
+    open System
+    open System.IO
+    open System.Diagnostics
+    open System.Reflection
+    open System.Collections.Generic
+    open System.Collections.Concurrent
+    open System.Threading
+    open Castle.Core
+    open Castle.Core.Configuration
+    open Castle.Core.Interceptor
+    open Castle.DynamicProxy
+    open Castle.Windsor
+    open Castle.MicroKernel
+    open Castle.MicroKernel.Facilities
+    open Castle.MicroKernel.ModelBuilder.Inspectors
+    open Castle.MicroKernel.Registration
+    open Castle.Facilities.ZMQ
+    open System.Runtime.Remoting.Messaging
 
 
     type Dispatcher(kernel:IKernel) =
         static let logger = log4net.LogManager.GetLogger(typeof<Dispatcher>)
         
-        member this.Invoke(target:string, methd:string, parms: obj array, meta: string array) = 
+        member this.Invoke(target:string, methd:string, parms: ParamTuple array, meta: string array) = 
 
             let targetType = resolvedType(target)
 
             let instance = kernel.Resolve(targetType)
 
-            let methodMeta = deserialize_method_meta meta
+            let methodBase : MethodInfo = 
+                if meta <> null 
+                then
+                    let methodMeta = deserialize_method_meta meta  
+                    targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public, null, methodMeta, null)
+                else targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public)
 
-            let methodBase = 
-                targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public, null, methodMeta, null)
-            // let methodBase = targetType.GetMethod(methd, BindingFlags.Instance ||| BindingFlags.Public)
+            let methodMeta = 
+                methodBase.GetParameters() 
+                |> Array.map (fun p -> p.ParameterType)
 
             let args = deserialize_params parms methodMeta
             // let args = deserialize_params parms (methodBase.GetParameters() |> Array.map (fun p -> p.ParameterType))
 
-            methodBase.Invoke(instance, args)
+            let result = methodBase.Invoke(instance, args)
+            (result, methodBase.ReturnType)
+
 
     type RemoteRequestListener(bindAddress:String, workers:Int16, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
         inherit BaseListener(zContextAccessor)
@@ -65,39 +72,38 @@ open System.Runtime.Remoting.Messaging
         override this.GetConfig() = config.Force()
 
         override this.GetReplyFor(message, socket) = 
-            let mutable response : ResponseMessage = null
-             
-            try
-                let request = deserialize_with_protobuf<RequestMessage>(message);
-
+            // let response : ResponseMessage = null
+            
+            let response = 
                 try
-                    let result = 
-                        dispatcher.Invoke(request.TargetService, request.TargetMethod, request.MethodParams, request.MethodMeta)
-                                
-                    if is_collection (result) then
-                        let arrayRes = to_array result
-                        response <- ResponseMessage(null, null, ReturnValueArray = arrayRes)
-                    else 
-                        response <- ResponseMessage(result, null)
+                    
+                    let request = deserialize_with_protobuf<RequestMessage>(message);
+
+                    try
+                        let result = 
+                            dispatcher.Invoke(request.TargetService, request.TargetMethod, request.Params, request.ParamTypes)
+                        
+                        build_response (fst result) (snd result)
+                    with
+                        | :? TargetInvocationException as ex ->
+                            let e = ex.InnerException 
+                            base.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, e)
+                            build_response_with_exception (e.GetType().Name) e.Message
+                        | ex -> 
+                            base.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, ex)
+                            build_response_with_exception (ex.GetType().Name) ex.Message
                 with
-                    | :? TargetInvocationException as ex ->
-                        let e = ex.InnerException 
-                        base.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, e)
-                        response <- ResponseMessage(null, ExceptionInfo(e.GetType().Name, e.Message) )
                     | ex -> 
-                        base.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, ex)
-                        response <- ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message))
-            with
-                | ex -> 
-                    base.Logger.Error("Error executing remote invocation", ex)
-                    response <- ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message))
+                        base.Logger.Error("Error executing remote invocation", ex)
+                        build_response_with_exception (ex.GetType().Name) ex.Message
 
             try
                 let buffer = serialize_with_protobuf(response)
                 buffer
             with
                 | ex -> 
-                    serialize_with_protobuf ( ResponseMessage(null, ExceptionInfo(ex.GetType().Name, ex.Message)) )
+                    serialize_with_protobuf ( ResponseMessage(null, null, ExceptionInfo(ex.GetType().Name, ex.Message)) )
+
 
         interface IStartable with
             override this.Start() = 
@@ -114,6 +120,7 @@ open System.Runtime.Remoting.Messaging
                     pool.Dispose()
 
                 base.Stop()
+
 
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
         inherit BaseRequest<ResponseMessage>(zContextAccessor)
@@ -136,11 +143,15 @@ open System.Runtime.Remoting.Messaging
             
             if bytes <> null then
                 PerfCounters.IncrementRcv ()
-                
 //                elapsedCounter.IncrementBy(watch.ElapsedTicks) |> ignore
 //                baseElapsedCounter.Increment() |> ignore
 
-            deserialize_with_protobuf<ResponseMessage>(bytes)
+            if bytes = null then
+                let m = "Remote call took too long to respond. Is the server up? " + (config.Value.ToString())
+                ResponseMessage(null, null, ExceptionInfo("Timeout", m))
+            else
+                deserialize_with_protobuf<ResponseMessage>(bytes)
+
 
     type RemoteRouter() =
         let routes = Dictionary<string, string>()
@@ -156,6 +167,7 @@ open System.Runtime.Remoting.Messaging
 
         member this.ReRoute(assembly: string, address: string) =
             routes.[assembly] <- address
+
 
     type AlternativeRouteContext(route: string) =
         do
@@ -185,12 +197,14 @@ open System.Runtime.Remoting.Messaging
                         invocation.Proceed()
                     else
                         let pInfo = invocation.Method.GetParameters()
+                        let pTypes = pInfo |> Array.map (fun p -> p.ParameterType)
                         let args = 
-                            serialize_parameters (invocation.Arguments) pInfo
+                            serialize_parameters (invocation.Arguments) pTypes 
 
                         let methodMeta = serialize_method_meta pInfo
 
-                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, invocation.Method.Name, args, methodMeta)
+                        let request = RequestMessage(invocation.Method.DeclaringType.AssemblyQualifiedName, 
+                                                     invocation.Method.Name, args, methodMeta)
                         let endpoint = router.GetEndpoint(invocation.Method.DeclaringType.Assembly)
 
                         let request = RemoteRequest(zContextAccessor, request, endpoint)
@@ -200,19 +214,8 @@ open System.Runtime.Remoting.Messaging
                             let msg = "Remote server threw " + (response.ExceptionInfo.Typename) + " with message " + (response.ExceptionInfo.Message)
                             raise (new Exception(msg))
 
-                        if invocation.Method.ReturnType <> typeof<Void> then
-                            invocation.ReturnValue <- 
-                                if response.ReturnValue <> null 
-                                then response.ReturnValue
-                                else 
-                                    if response.ReturnValueArray <> null then
-                                        if invocation.Method.ReturnType.IsArray then
-                                            let arrayElemType = invocation.Method.ReturnType.GetElementType()
-                                            (make_strongly_typed_array arrayElemType (response.ReturnValueArray)) :> obj
-                                        else
-                                            let itemType = invocation.Method.ReturnType.GetGenericArguments().[0]
-                                            (make_strongly_typed_enumerable itemType (response.ReturnValueArray))
-                                    else null
+                        else if invocation.Method.ReturnType <> typeof<Void> then
+                            invocation.ReturnValue <- deserialize_reponse response invocation.Method.ReturnType
                                     
                 finally
                     if logger.IsDebugEnabled then
