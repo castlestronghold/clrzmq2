@@ -57,6 +57,18 @@ namespace ZMQ.Extensions
 			socket.Bind(Socket.BuildUri(transport, address, port));
 		}
 
+		public virtual void Bind(string endpoint)
+		{
+			if (socket == null)
+			{
+				socket = new Socket(Type);
+				socket.SetSockOpt(SocketOpt.LINGER, 0);
+				socketManager.Registry(socket);
+			}
+
+			socket.Bind(endpoint);
+		}
+
 		public virtual void Dispose()
 		{
 			try
