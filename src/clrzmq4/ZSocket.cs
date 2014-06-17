@@ -18,6 +18,9 @@
 		private readonly Socket _socket;
 //		private readonly ZContext _context;
 //		private readonly int _timeout;
+		private Poll _pollIn;
+		private Poll[] _pollitemsCache;
+
 		private volatile bool _disposed;
 
 		public ZSocket(ZContext context, SocketType type, int timeout = -1)
@@ -35,7 +38,6 @@
 		}
 
 		public EventHandler RcvReady;
-		private Poll _pollIn;
 
 		public bool DoPoll(int timeout)
 		{
@@ -48,10 +50,12 @@
 					{
 						ev(this, EventArgs.Empty);
 					}
-				});	
+				});
+
+				_pollitemsCache = new[] { _pollIn };
 			}
 
-			return PollingModule.DoPoll(timeout, new[] { _pollIn });
+			return PollingModule.DoPoll(timeout, _pollitemsCache);
 		}
 
 //		public virtual void Connect(Transport transport, string address, uint port, int timeout)
@@ -85,7 +89,6 @@
 //				socket.SetSockOpt(SocketOpt.LINGER, 0);
 //				socketManager.Registry(socket);
 //			}
-//
 //			socket.Bind(endpoint);
 		}
 

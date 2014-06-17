@@ -129,7 +129,12 @@
     <Reference Include="Castle.Windsor">
       <HintPath>..\..\..\lib\Castle.Windsor.dll</HintPath>
     </Reference>
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <Reference Include="FSharp.Core">
+      <HintPath>..\..\..\packages\FSharp.Core.Open.FS31.3.1.1.5\lib\net40\FSharp.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="fszmq">
+      <HintPath>..\..\..\packages\fszmq.4.0.6\lib\net40\fszmq.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="log4net">
@@ -145,14 +150,11 @@
     <Reference Include="System.Numerics" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml" />
-    <ProjectReference Include="..\..\clrzmq-ext\clrzmq-ext.csproj">
-      <Name>clrzmq-ext</Name>
-      <Project>{7203cf55-a452-407e-b767-4aa7ba616794}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\..\clrzmq\clrzmq.csproj">
-      <Name>clrzmq</Name>
-      <Project>{fe6d6cdd-8a04-4a3a-a654-5c687ab724e3}</Project>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\clrzmq4\clrzmq4.csproj">
+      <Name>clrzmq4</Name>
+      <Project>{192152df-8d88-4cfc-97d5-b5d544361458}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

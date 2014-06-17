@@ -93,6 +93,8 @@
     <Compile Include="Extensions\BaseRequest.cs" />
     <Compile Include="Extensions\BaseRequestOfT.cs" />
     <Compile Include="Extensions\BaseSubscriber.cs" />
+    <Compile Include="Extensions\Device.cs" />
+    <Compile Include="Extensions\WorkerPool.cs" />
     <Compile Include="ZConfig.cs" />
     <Compile Include="ZContext.cs" />
     <Compile Include="ZContextAccessor.cs" />

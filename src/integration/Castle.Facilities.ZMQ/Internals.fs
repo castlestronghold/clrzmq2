@@ -1,8 +1,7 @@
 ﻿namespace Castle.Facilities.ZMQ.Internals
 
     open ZMQ
-    open ZMQ.Extensions
-    open ZMQ.ZMQDevice
+    open ZMQ.Extensions2
     open System
     open System.IO
     open System.Diagnostics
@@ -53,7 +52,7 @@
     type RemoteRequestListener(bindAddress:String, workers:Int16, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
         inherit BaseListener(zContextAccessor)
 
-        let mutable pool:WorkerPool = null
+        // let mutable pool:WorkerPool = null
 
         let config = lazy
                         let parts = bindAddress.Split(':')

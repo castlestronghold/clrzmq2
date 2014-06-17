@@ -6,7 +6,7 @@
 
 	public abstract class BaseListener : IDisposable
 	{
-		private readonly log4net.ILog Logger;
+		protected readonly log4net.ILog Logger;
 
 //		protected static PerformanceCounter receivedCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfRequestsReceived);
 //		protected static PerformanceCounter sentCounter = PerfCounterRegistry.Get(PerfCounters.NumberOfResponseSent);
