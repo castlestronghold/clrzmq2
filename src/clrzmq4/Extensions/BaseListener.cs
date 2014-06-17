@@ -79,54 +79,32 @@
 		{
 			try
 			{
-				while (!_disposed)
+				zSocket.RcvReady += (sender, args) =>
 				{
-					var watch = new Stopwatch();
-
-					if (Logger.IsDebugEnabled)
-						watch.Start();
+					var bytes = zSocket.Recv();
+					byte[] reply = null;
 
 					try
 					{
-						zSocket.RcvReady += (sender, args) =>
-						{
-							var bytes = zSocket.Recv();
-							byte[] reply = null;
-
-							try
-							{
-								if (bytes == null)
-									reply = new byte[0];
-								else
-									reply = GetReplyFor(bytes, zSocket);
-							}
-							catch (Exception e)
-							{
-								Logger.Error("Error getting reply.", e);
-							}
-							finally
-							{
-								zSocket.Send(reply ?? new byte[0]);
-//								sentCounter.Increment();
-							}
-						};
-
-						while (true)
-						{
-							zSocket.DoPoll(10000);
-							if (_disposed) break;
-						}
+						if (bytes == null)
+							reply = new byte[0];
+						else
+							reply = GetReplyFor(bytes, zSocket);
+					}
+					catch (Exception e)
+					{
+						Logger.Error("Error getting reply.", e);
 					}
 					finally
 					{
-						watch.Stop();
-
-//						timerReplyCounter.IncrementBy(watch.ElapsedTicks);
-//						baseReplyCounter.Increment();
-
-						if (Logger.IsDebugEnabled)
-							Logger.Debug("Listener Recv Took: " + watch.ElapsedMilliseconds);
+						zSocket.Send(reply ?? new byte[0]);
+//								sentCounter.Increment();
 					}
+				};
+
+				while (!_disposed)
+				{
+					zSocket.DoPoll(10000);
 				}
 			}
 			catch (Exception e)

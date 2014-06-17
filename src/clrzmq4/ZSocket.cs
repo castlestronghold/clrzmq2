@@ -1,10 +1,6 @@
 ﻿namespace ZMQ.Extensions2
 {
 	using System;
-	using System.Collections.Generic;
-	using System.Collections.Concurrent;
-	using System.Runtime.ExceptionServices;
-	using System.Security;
 	using System.Text;
 	using fszmq;
 
@@ -16,8 +12,7 @@
 		public const int DefaultTimeout = 300 * 1000;
 
 		private readonly Socket _socket;
-//		private readonly ZContext _context;
-//		private readonly int _timeout;
+
 		private Poll _pollIn;
 		private Poll[] _pollitemsCache;
 
@@ -58,12 +53,6 @@
 			return PollingModule.DoPoll(timeout, _pollitemsCache);
 		}
 
-//		public virtual void Connect(Transport transport, string address, uint port, int timeout)
-//		{
-//			// this._timeout = timeout;
-//			// socket = socketManager.Connect(Socket.BuildUri(transport, address, port), Type, timeout);
-//		}
-
 		public virtual void Connect(Transport transport, string address, uint port)
 		{
 			_socket.Connect(transport.ToString().ToLower() + "://" + address + ":" + port);
@@ -82,14 +71,6 @@
 		public virtual void Bind(string endpoint)
 		{
 			_socket.Bind(endpoint);
-
-//			if (socket == null)
-//			{
-//				socket = new Socket(Type);
-//				socket.SetSockOpt(SocketOpt.LINGER, 0);
-//				socketManager.Registry(socket);
-//			}
-//			socket.Bind(endpoint);
 		}
 
 		public virtual void Dispose()
@@ -140,10 +121,7 @@
 
 		public virtual byte[] Recv(/*int timeout = DefaultTimeout*/)
 		{
-			// if (IsInfinite(timeout))
 			return _socket.Recv();
-
-//			return _socket.Recv(timeout);
 		}
 
 		public virtual string Recv(Encoding encoding /*, int timeout = DefaultTimeout*/)
@@ -163,25 +141,18 @@
 			SocketModule.Subscribe(_socket, new[] { Encoding.UTF8.GetBytes(filter) });
 		}
 
-
 		//Crazy Pirate Pattern
 		private void SafeSend(Action sender)
 		{
-//			var failed = false;
 			try
 			{
 				sender();
 			}
 			catch (fszmq.ZMQError e)
 			{
-//				failed = true;
 				Logger.Error("SafeSend error", e);
 				throw;
-				// socket = SocketManager.CreateSocket(socket.Address, Type, timeout);
 			}
-
-//			if (failed)
-//				sender();
 		}
 
 //		private static bool IsInfinite(int timeout)

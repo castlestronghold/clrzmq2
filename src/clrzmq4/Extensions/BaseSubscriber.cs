@@ -56,22 +56,20 @@ namespace ZMQ.Extensions2
 				_socket.Connect(Transport.TCP, _address, _port);
 				_socket.Subscribe(string.Empty);
 
-				while (true)
+				_socket.RcvReady += (sender, args) =>
 				{
-					_socket.RcvReady += (sender, args) =>
+					var raw = _socket.Recv();
+
+					if (raw != null && raw.Length != 0)
 					{
-						var raw = _socket.Recv();
+						var message = Deserialize(raw);
+						OnReceived(message);
+					}
+				};
 
-						if (raw != null && raw.Length != 0)
-						{
-							var message = Deserialize(raw);
-							OnReceived(message);
-						}
-					};
-
+				while (!_disposed)
+				{
 					_socket.DoPoll(1000);
-
-					if (_disposed) break;
 				}
 			}
 			catch (System.AccessViolationException e)

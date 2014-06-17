@@ -3,7 +3,6 @@
 	using System;
 	using System.Threading;
 	using fszmq;
-	using ZMQ.Extensions2;
 
 	public abstract class Device : IDisposable
 	{
@@ -64,7 +63,8 @@
 			{
 				while (_isRunning)
 				{
-					PollingModule.DoPoll(10000, items);
+					PollingModule.PollForever(items);
+//					PollingModule.DoPoll(10000, items);
 				}
 			}
 			catch (fszmq.ZMQError) 
