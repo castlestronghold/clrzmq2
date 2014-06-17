@@ -60,9 +60,16 @@
 			var item2 = _backend.AsPollIn((s) => InternalRelay(s, _frontend));
 			var items = new[] { item1, item2 };
 
-			while (_isRunning)
+			try
 			{
-				PollingModule.DoPoll(10000, items);
+				while (_isRunning)
+				{
+					PollingModule.DoPoll(10000, items);
+				}
+			}
+			catch (fszmq.ZMQError) 
+			{
+				// context destroyed, ignore
 			}
 		}
 

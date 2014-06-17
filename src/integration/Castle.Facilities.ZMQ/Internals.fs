@@ -49,10 +49,10 @@
             (result, methodBase.ReturnType)
 
 
-    type RemoteRequestListener(bindAddress:String, workers:Int16, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
+    type RemoteRequestListener(bindAddress:String, workers:int, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
         inherit BaseListener(zContextAccessor)
 
-        // let mutable pool:WorkerPool = null
+        let mutable pool:WorkerPool = null
 
         let config = lazy
                         let parts = bindAddress.Split(':')
@@ -66,7 +66,7 @@
 
                 base.AcceptAndHandleMessage(socket)
             with
-                | ex -> base.Logger.Fatal("Error creating worker thread", ex)
+                | ex -> this.Logger.Fatal("Error creating worker thread", ex)
 
         override this.GetConfig() = config.Force()
 
@@ -75,7 +75,6 @@
             
             let response = 
                 try
-                    
                     let request = deserialize_with_protobuf<RequestMessage>(message);
 
                     try
@@ -86,14 +85,14 @@
                     with
                         | :? TargetInvocationException as ex ->
                             let e = ex.InnerException 
-                            base.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, e)
+                            this.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, e)
                             build_response_with_exception (e.GetType().Name) e.Message
                         | ex -> 
-                            base.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, ex)
+                            this.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, ex)
                             build_response_with_exception (ex.GetType().Name) ex.Message
                 with
                     | ex -> 
-                        base.Logger.Error("Error executing remote invocation", ex)
+                        this.Logger.Error("Error executing remote invocation", ex)
                         build_response_with_exception (ex.GetType().Name) ex.Message
 
             try
@@ -106,24 +105,24 @@
 
         interface IStartable with
             override this.Start() = 
-                base.Logger.Debug("Starting " + this.GetType().Name)
+                this.Logger.Debug("Starting " + this.GetType().Name)
 
                 let c = config.Force()
 
-                pool <- new WorkerPool(c.ToString(), c.Local, new ThreadStart(this.thread_worker), workers)
+                pool <- new WorkerPool(zContextAccessor.Context, c.ToString(), c.Local, new ThreadStart(this.thread_worker), workers)
+                pool.Start()
 
-                base.Logger.InfoFormat("Binding {0} on {1}:{2} with {3} workers", this.GetType().Name, c.Ip, c.Port, workers)
+                this.Logger.InfoFormat("Binding {0} on {1}:{2} with {3} workers", this.GetType().Name, c.Ip, c.Port, workers)
 
             override this.Stop() = 
                 if pool <> null then
-                    pool.Dispose()
+                    pool.Stop()
 
                 base.Stop()
 
 
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
         inherit BaseRequest<ResponseMessage>(zContextAccessor)
-
 
         let config = lazy
                         let parts = endpoint.Split(':')
@@ -138,7 +137,7 @@
     
             PerfCounters.IncrementSent ()
 
-            let bytes = socket.Recv(ZSocket.InfiniteTimeout)
+            let bytes = socket.Recv()
             
             if bytes <> null then
                 PerfCounters.IncrementRcv ()
@@ -244,11 +243,7 @@
             try
                 logger.Info("Disposing ZeroMQ Facility...")
 
-                let pool = SocketManager.Instance.Value
-
-                pool.Dispose()
-
-                zContextAccessor.Current.Dispose()
+                zContextAccessor.Dispose()
 
                 logger.Info("Disposed ZeroMQ Facility.")
              with

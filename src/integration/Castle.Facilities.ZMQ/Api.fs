@@ -1,6 +1,6 @@
 ﻿namespace Castle.Facilities.ZMQ
 
-    open ZMQ.Extensions
+    open ZMQ.Extensions2
     open System
     open Castle.Facilities.Startable
     open Castle.MicroKernel.Facilities

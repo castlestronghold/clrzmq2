@@ -134,7 +134,6 @@
 		public virtual void Send(byte[] message)
 		{
 			if (message == null) throw new ArgumentNullException("message");
-			if (message.Length == 0) throw new ArgumentException("Attempt to send zero length buffer", "message");
 
 			SafeSend(() => _socket.Send(message));
 		}

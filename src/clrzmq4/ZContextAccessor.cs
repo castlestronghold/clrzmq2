@@ -24,6 +24,15 @@ namespace ZMQ.Extensions2
 			_socketFactory = socketFactory;
 		}
 
+		public ZContext Context
+		{
+			get
+			{
+				if (_disposed) throw new ObjectDisposedException("ZContextAccessor disposed");
+				return _context;
+			}
+		}
+
 		public Func<SocketType, ZSocket> SocketFactory
 		{
 			get { return _socketFactory; }

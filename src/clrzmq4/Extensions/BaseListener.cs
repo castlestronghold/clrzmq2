@@ -95,7 +95,10 @@
 
 							try
 							{
-								reply = bytes == null ? new byte[0] : GetReplyFor(bytes, zSocket);
+								if (bytes == null)
+									reply = new byte[0];
+								else
+									reply = GetReplyFor(bytes, zSocket);
 							}
 							catch (Exception e)
 							{
@@ -110,13 +113,9 @@
 
 						while (true)
 						{
-							zSocket.DoPoll(1000);
+							zSocket.DoPoll(10000);
 							if (_disposed) break;
 						}
-
-//						var bytes = zSocket.Recv(ZSocket.InfiniteTimeout);
-//						byte[] reply = null;
-//						receivedCounter.Increment();
 					}
 					finally
 					{

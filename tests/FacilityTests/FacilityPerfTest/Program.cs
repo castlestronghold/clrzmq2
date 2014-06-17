@@ -24,7 +24,6 @@
 //			var packer2 = MsgPack.Serialization.MessagePackSerializer.Create<ResponseMessage>();
 //			packer2.Pack(new MemoryStream(), new ResponseMessage("", new Exception("test")) );
 //
-//
 //			return;
 
 			_containerClient = new WindsorContainer(new XmlInterpreter("config_client.config"));
@@ -48,21 +47,21 @@
 
 		private static void InvokeBatch(IRemoteServ1 service)
 		{
-			try
-			{
-				service.DoSomethingWrong();
-				Assert.Fail("Expecting exception here");
-			}
-			catch (Exception ex)
-			{
-				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
-			}
+//			try
+//			{
+//				service.DoSomethingWrong();
+//				Assert.Fail("Expecting exception here");
+//			}
+//			catch (Exception ex)
+//			{
+//				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
+//			}
 
 			var watch = new System.Diagnostics.Stopwatch();
 			watch.Start();
 
 			// 1000
-			for (var i = 0; i < 1000; i++)
+			for (var i = 0; i < 10000; i++)
 			{
 				// Console.WriteLine("new batch ");
 
