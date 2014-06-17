@@ -47,21 +47,21 @@
 
 		private static void InvokeBatch(IRemoteServ1 service)
 		{
-//			try
-//			{
-//				service.DoSomethingWrong();
-//				Assert.Fail("Expecting exception here");
-//			}
-//			catch (Exception ex)
-//			{
-//				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
-//			}
+			try
+			{
+				service.DoSomethingWrong();
+				Assert.Fail("Expecting exception here");
+			}
+			catch (Exception ex)
+			{
+				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
+			}
 
 			var watch = new System.Diagnostics.Stopwatch();
 			watch.Start();
 
 			// 1000
-			for (var i = 0; i < 10000; i++)
+			for (var i = 0; i < 100; i++)
 			{
 				// Console.WriteLine("new batch ");
 
