@@ -11,6 +11,7 @@
 		private readonly Socket _frontend;
 		private readonly Socket _backend;
 		private volatile bool _isRunning;
+		private bool _ownSockets = false;
 		private Thread _running;
 
 		protected Device(ZContext context, string front, string back)
@@ -21,6 +22,7 @@
 
 			_frontend = context.Ctx.Router();
 			_backend = context.Ctx.Dealer();
+			_ownSockets = true;
 
 			_frontend.Bind(front);
 			_backend.Bind(back);
@@ -51,6 +53,12 @@
 		public void Dispose()
 		{
 			this.Stop();
+
+			if (_ownSockets)
+			{
+				(_frontend as IDisposable).Dispose();
+				(_backend as IDisposable).Dispose();
+			}
 		}
 
 		private void PollRunner()
@@ -63,8 +71,8 @@
 			{
 				while (_isRunning)
 				{
-					PollingModule.PollForever(items);
-//					PollingModule.DoPoll(10000, items);
+					// PollingModule.PollForever(items);
+					PollingModule.DoPoll(1000, items);
 				}
 			}
 			catch (fszmq.ZMQError) 
