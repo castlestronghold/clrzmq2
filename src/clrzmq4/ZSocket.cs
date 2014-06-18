@@ -2,7 +2,9 @@
 {
 	using System;
 	using System.Text;
+	using System.Threading;
 	using fszmq;
+	using Microsoft.FSharp.Core;
 
 	public class ZSocket : IDisposable
 	{
@@ -13,23 +15,31 @@
 
 		private readonly Socket _socket;
 
+		private int _timeout;
 		private Poll _pollIn;
 		private Poll[] _pollitemsCache;
 
 		private volatile bool _disposed;
 
+//		private static int Counter = 0;
+
 		public ZSocket(ZContext context, SocketType type, int timeout = -1)
 		{
-//			this._context = context;
-//			this._timeout = timeout;
+//			Interlocked.Increment(ref Counter);
 
 			this._socket = context.Ctx.Socket((int)type);
 			this._socket.SetOption(fszmq.ZMQ.LINGER, 0);
 
 			if (timeout != -1)
 			{
-				this._socket.SetOption(fszmq.ZMQ.RCVTIMEO, timeout);
+				SetRecvTimeout(timeout);
 			}
+		}
+
+		public void SetRecvTimeout(int timeout)
+		{
+			this._socket.SetOption(fszmq.ZMQ.RCVTIMEO, timeout);
+			this._timeout = timeout;
 		}
 
 		public EventHandler RcvReady;
@@ -75,12 +85,17 @@
 
 		public virtual void Dispose()
 		{
+			if (_disposed) return;
+
 			try
 			{
 				_disposed = true;
 
 				(_socket as IDisposable).Dispose();
-				
+
+//				var actual = Interlocked.Decrement(ref Counter);
+//				Console.WriteLine("Sockets " + actual);
+
 				GC.SuppressFinalize(this);
 			}
 			catch (Exception e)
@@ -91,10 +106,7 @@
 
 		~ZSocket()
 		{
-			if (!_disposed)
-			{
-				Dispose();
-			}
+			Dispose();
 		}
 
 		public virtual void Send(string message, Encoding encoding)
@@ -121,7 +133,15 @@
 
 		public virtual byte[] Recv(/*int timeout = DefaultTimeout*/)
 		{
-			return _socket.Recv();
+			try
+			{
+				return _socket.Recv();
+			}
+			catch (Exception ex)
+			{
+				Logger.Error("Error on Recv", ex);
+				throw;
+			}
 		}
 
 		public virtual string Recv(Encoding encoding /*, int timeout = DefaultTimeout*/)

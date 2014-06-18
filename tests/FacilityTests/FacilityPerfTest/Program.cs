@@ -40,22 +40,27 @@
 			}
 			finally
 			{
+				Console.WriteLine("Disposing client");
 				_containerClient.Dispose();
+
+				Console.WriteLine("Disposing server");
 				_containerServer.Dispose();
+
+				Console.WriteLine("Disposed");
 			}
 		}
 
 		private static void InvokeBatch(IRemoteServ1 service)
 		{
-			try
-			{
-				service.DoSomethingWrong();
-				Assert.Fail("Expecting exception here");
-			}
-			catch (Exception ex)
-			{
-				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
-			}
+//			try
+//			{
+//				service.DoSomethingWrong();
+//				Assert.Fail("Expecting exception here");
+//			}
+//			catch (Exception ex)
+//			{
+//				Assert.AreEqual("Remote server threw Exception with message simple message", ex.Message);
+//			}
 
 			var watch = new System.Diagnostics.Stopwatch();
 			watch.Start();

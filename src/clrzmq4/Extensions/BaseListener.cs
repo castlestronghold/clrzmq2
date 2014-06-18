@@ -29,7 +29,7 @@
 
 		protected abstract ZConfig GetConfig();
 
-		protected abstract byte[] GetReplyFor(byte[] request, ZSocket socket);
+		protected abstract byte[] GetReplyFor(byte[] request);
 
 		public virtual void Start()
 		{
@@ -63,7 +63,7 @@
 
 				Logger.InfoFormat("Binding {0} on {1}:{2}", GetType().Name, config.Ip, config.Port);
 
-				AcceptAndHandleMessage(_socket);
+				AcceptAndHandleMessage();
 			}
 			catch (System.Exception e)
 			{
@@ -75,13 +75,13 @@
 			}
 		}
 
-		protected void AcceptAndHandleMessage(ZSocket zSocket)
+		protected void AcceptAndHandleMessage()
 		{
 			try
 			{
-				zSocket.RcvReady += (sender, args) =>
+				_socket.RcvReady += (sender, args) =>
 				{
-					var bytes = zSocket.Recv();
+					var bytes = _socket.Recv();
 					byte[] reply = null;
 
 					try
@@ -89,7 +89,7 @@
 						if (bytes == null)
 							reply = new byte[0];
 						else
-							reply = GetReplyFor(bytes, zSocket);
+							reply = GetReplyFor(bytes);
 					}
 					catch (Exception e)
 					{
@@ -97,14 +97,14 @@
 					}
 					finally
 					{
-						zSocket.Send(reply ?? new byte[0]);
+						_socket.Send(reply ?? new byte[0]);
 //								sentCounter.Increment();
 					}
 				};
 
 				while (!_disposed)
 				{
-					zSocket.DoPoll(10000);
+					_socket.DoPoll(1000);
 				}
 			}
 			catch (Exception e)

@@ -12,6 +12,7 @@
         inherit AbstractFacility()
 
         let _reaper : Ref<Reaper> = ref null
+        let _isServer : Ref<bool> = ref false
 
         member this.setup_server() =
             let workers = if base.FacilityConfig.Attributes.["workers"] = null then 3 else Convert.ToInt32(base.FacilityConfig.Attributes.["workers"])
@@ -37,14 +38,14 @@
                                  Component.For<Dispatcher>(),
                                  Component.For<RemoteRequestInterceptor>().LifeStyle.Transient) |> ignore
 
-            let isServer = not (String.IsNullOrEmpty(base.FacilityConfig.Attributes.["listen"]))
+            _isServer := not (String.IsNullOrEmpty(base.FacilityConfig.Attributes.["listen"]))
 
 //            if not isServer then
             base.Kernel.ComponentModelBuilder.AddContributor(new RemoteRequestInspector())
 
             PerfCounters.setIsEnabled ( StringComparer.OrdinalIgnoreCase.Equals("true", base.FacilityConfig.Attributes.["usePerfCounter"]) )
 
-            if isServer then
+            if (_isServer.Value) then
                 this.setup_server()
 
             if base.FacilityConfig.Children.["endpoints"] <> null then
@@ -53,6 +54,11 @@
             _reaper := base.Kernel.Register(Component.For<Reaper>()).Resolve<Reaper>() 
         
         override this.Dispose() = 
+            
+            if (_isServer.Value) then
+                let instance = base.Kernel.Resolve<RemoteRequestListener>()
+                (instance :> IDisposable).Dispose()
+
             if !_reaper <> null then 
                 (!_reaper :> IDisposable).Dispose();
 

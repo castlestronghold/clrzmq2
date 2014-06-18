@@ -50,8 +50,9 @@
 
 
     type RemoteRequestListener(bindAddress:String, workers:int, zContextAccessor:ZContextAccessor, dispatcher:Dispatcher) =
-        inherit BaseListener(zContextAccessor)
+        static let logger = log4net.LogManager.GetLogger(typeof<RemoteRequestListener>)
 
+        let mutable disposed = false
         let mutable pool:WorkerPool = null
 
         let config = lazy
@@ -59,20 +60,26 @@
                         ZConfig(parts.[0], Convert.ToUInt32(parts.[1]), Transport.TCP)
 
         member this.thread_worker (state:obj) = 
-            try
-                use socket = zContextAccessor.SocketFactory.Invoke(SocketType.REP)
 
+            use socket = zContextAccessor.SocketFactory.Invoke(SocketType.REP)
+            try
+                socket.SetRecvTimeout(1000)
                 socket.Connect(config.Force().Local)
 
-                base.AcceptAndHandleMessage(socket)
+                while (not disposed) do
+                    let buffer = socket.Recv()
+                    if (buffer <> null) then
+                        let reply = this.GetReplyFor(buffer);
+                        let reply = 
+                            if reply <> null then reply 
+                            else Array.zeroCreate<byte> 0
+
+                        socket.Send(  reply );
+                    ()
             with
-                | ex -> this.Logger.Fatal("Error creating worker thread", ex)
+                | ex -> logger.Fatal("Error in worker thread", ex)
 
-        override this.GetConfig() = config.Force()
-
-        override this.GetReplyFor(message, socket) = 
-            // let response : ResponseMessage = null
-            
+        member this.GetReplyFor(message) =             
             let response = 
                 try
                     let request = deserialize_with_protobuf<RequestMessage>(message);
@@ -85,14 +92,14 @@
                     with
                         | :? TargetInvocationException as ex ->
                             let e = ex.InnerException 
-                            this.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, e)
+                            logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, e)
                             build_response_with_exception (e.GetType().Name) e.Message
                         | ex -> 
-                            this.Logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, ex)
+                            logger.Error("Error executing remote invocation " + request.TargetService + "." + request.TargetMethod, ex)
                             build_response_with_exception (ex.GetType().Name) ex.Message
                 with
                     | ex -> 
-                        this.Logger.Error("Error executing remote invocation", ex)
+                        logger.Error("Error executing remote invocation", ex)
                         build_response_with_exception (ex.GetType().Name) ex.Message
 
             try
@@ -102,23 +109,28 @@
                 | ex -> 
                     serialize_with_protobuf ( ResponseMessage(null, null, ExceptionInfo(ex.GetType().Name, ex.Message)) )
 
-
         interface IStartable with
             override this.Start() = 
-                this.Logger.Debug("Starting " + this.GetType().Name)
+                logger.Debug("Starting " + this.GetType().Name)
 
                 let c = config.Force()
+
+                if (pool <> null) then pool.Dispose()
 
                 pool <- new WorkerPool(zContextAccessor.Context, c.ToString(), c.Local, new ThreadStart(this.thread_worker), workers)
                 pool.Start()
 
-                this.Logger.InfoFormat("Binding {0} on {1}:{2} with {3} workers", this.GetType().Name, c.Ip, c.Port, workers)
+                logger.InfoFormat("Binding {0} on {1}:{2} with {3} workers", this.GetType().Name, c.Ip, c.Port, workers)
 
             override this.Stop() = 
                 if pool <> null then
                     pool.Stop()
 
-                base.Stop()
+        interface IDisposable with
+            override this.Dispose() =
+                disposed <- true
+                if pool <> null then
+                    pool.Dispose()
 
 
     type RemoteRequest(zContextAccessor:ZContextAccessor, message:RequestMessage, endpoint:string) = 
@@ -165,18 +177,6 @@
 
         member this.ReRoute(assembly: string, address: string) =
             routes.[assembly] <- address
-
-
-    type AlternativeRouteContext(route: string) =
-        do
-           CallContext.SetData("0mq.facility.endpoint", route)
-
-        interface IDisposable with
-            member x.Dispose() =
-                CallContext.SetData("0mq.facility.endpoint", null)
-
-        static member For(r: string) =
-            (new AlternativeRouteContext(r)) :> IDisposable
 
 
     type RemoteRequestInterceptor(zContextAccessor:ZContextAccessor, router:RemoteRouter) =
@@ -239,16 +239,37 @@
     type Reaper(zContextAccessor:ZContextAccessor) =
         static let logger = log4net.LogManager.GetLogger(typeof<Reaper>)
 
+        let mutable _disposed = false
+
         let dispose() = 
-            try
-                logger.Info("Disposing ZeroMQ Facility...")
+            if (_disposed = false) then
+                _disposed <- true
+                try
+                    logger.Info("Disposing ZeroMQ Facility...")
 
-                zContextAccessor.Dispose()
+                    // listeners: RemoteRequestListener[]
+                    // listeners |> Seq.iter (fun listener -> listener.Dispose())
 
-                logger.Info("Disposed ZeroMQ Facility.")
-             with
-                | ex -> logger.Error("Error disponsing ZeroMQ Facility components", ex)
+                    zContextAccessor.Dispose()
+
+                    logger.Info("Disposed ZeroMQ Facility.")
+                 with
+                    | ex -> logger.Error("Error disponsing ZeroMQ Facility components", ex)
 
         interface IDisposable with
-            
             member this.Dispose() = dispose()
+
+
+
+            (*
+    type AlternativeRouteContext(route: string) =
+        do
+           CallContext.SetData("0mq.facility.endpoint", route)
+
+        interface IDisposable with
+            member x.Dispose() =
+                CallContext.SetData("0mq.facility.endpoint", null)
+
+        static member For(r: string) =
+            (new AlternativeRouteContext(r)) :> IDisposable
+            *)
