@@ -6,7 +6,8 @@
 	using fszmq;
 	using Microsoft.FSharp.Core;
 
-	public class ZSocket : IDisposable
+
+	public class ZSocket : IDisposable, IZSocket
 	{
 		private static readonly log4net.ILog Logger = log4net.LogManager.GetLogger(typeof(ZSocket));
 
